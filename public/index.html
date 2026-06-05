@@ -84,9 +84,17 @@
       transition: opacity .5s;
     }
     .ref-item {
-      font-size: 3.2rem; background: var(--card); border-radius: var(--r);
+      background: var(--card); border-radius: var(--r);
       padding: 14px; aspect-ratio: 1;
       display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.3);
+      border: 2px solid rgba(255,255,255,.06);
+      transition: transform .2s;
+    }
+    .ref-item:hover { transform: scale(1.05); }
+    .ref-item img {
+      width: 100%; height: 100%; object-fit: contain;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,.4));
     }
 
     /* ── timer bar ── */
@@ -118,7 +126,14 @@
       border-color: var(--accent);
       background: rgba(78, 204, 163, .15);
     }
-    #card-emoji { font-size: 5rem; line-height: 1; pointer-events: none; }
+    #card-emoji {
+      width: 90px; height: 90px; pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #card-emoji img {
+      width: 100%; height: 100%; object-fit: contain;
+      filter: drop-shadow(0 1px 3px rgba(0,0,0,.4));
+    }
 
     .sel-count { font-size: .9rem; color: var(--dim); }
     .sel-count span { color: var(--accent); font-weight: 700; }
@@ -137,7 +152,13 @@
     }
     .recap-label { color: var(--dim); font-size: .85rem; margin-bottom: 10px; }
     .recap-items { display: flex; gap: 8px; flex-wrap: wrap; }
-    .recap-item  { font-size: 2rem; }
+    .recap-item  {
+      width: 44px; height: 44px; background: var(--surface);
+      border-radius: 10px; padding: 6px;
+      display: inline-flex; align-items: center; justify-content: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,.25);
+    }
+    .recap-item img { width: 100%; height: 100%; object-fit: contain; }
 
     .scores-header {
       display: grid; grid-template-columns: 1fr 56px 52px 52px;
@@ -167,7 +188,7 @@
     .elim-banner.victor { background: rgba(78,204,163,.18); color: var(--accent); }
 
     /* ── game over ── */
-    .trophy { font-size: 5rem; margin-bottom: 12px; }
+    .trophy { width: 100px; height: 100px; margin: 0 auto 12px; }
     #winner-name { font-size: 2.2rem; color: var(--accent); margin-bottom: 6px; }
   </style>
 </head>
@@ -176,7 +197,7 @@
 <!-- JOIN -->
 <div id="join-screen" class="screen active">
   <div class="container">
-    <div style="font-size:3rem;margin-bottom:6px">🎯</div>
+    <div style="width:80px;height:80px;margin:0 auto 6px"><img src="/assets/observation-eye-svgrepo-com.svg" style="width:100%;height:100%" alt="logo"></div>
     <h1>SpotIt!</h1>
     <p class="subtitle">Memory · Speed · Survival</p>
     <input type="text" id="name-input" placeholder="Your name" maxlength="20" autocomplete="off" spellcheck="false">
@@ -250,7 +271,7 @@
 <!-- GAME OVER -->
 <div id="gameover-screen" class="screen">
   <div class="container">
-    <div class="trophy">🏆</div>
+    <div class="trophy"><img src="/assets/stars-star-svgrepo-com-2.svg" style="width:100%;height:100%" alt="winner"></div>
     <h1 id="winner-name"></h1>
     <p class="subtitle">wins the game!</p>
     <button id="play-again-btn" class="btn-ghost" style="margin-top:24px">Play Again</button>
@@ -345,7 +366,7 @@ socket.on('phase1_start', ({ items, duration, round }) => {
   const grid = document.getElementById('ref-grid');
   grid.style.opacity = '1';
   grid.style.transition = '';
-  grid.innerHTML = items.map(i => `<div class="ref-item">${i}</div>`).join('');
+  grid.innerHTML = items.map(i => `<div class="ref-item"><img src="/assets/${i}" alt="item"></div>`).join('');
 
   setBar(document.getElementById('p1-bar'), duration, 'var(--accent)');
   show('phase1-screen');
@@ -383,7 +404,7 @@ socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => 
   document.getElementById('res-round').textContent = round;
 
   document.getElementById('res-ref-items').innerHTML =
-    refItems.map(i => `<span class="recap-item">${i}</span>`).join('');
+    refItems.map(i => `<span class="recap-item"><img src="/assets/${i}" alt="item"></span>`).join('');
 
   document.getElementById('scores-list').innerHTML = scores.map(s => `
     <div class="score-row${s.eliminated ? ' out' : ''}">
@@ -443,7 +464,7 @@ function advanceCarousel() {
   const mover = document.getElementById('item-mover');
   const card  = document.getElementById('moving-card');
 
-  document.getElementById('card-emoji').textContent = item;
+  document.getElementById('card-emoji').innerHTML = `<img src="/assets/${item}" alt="item">`;
   card.className = 'moving-card' + (cSelected.has(item) ? ' selected' : '');
   document.getElementById('p2-counter').textContent = `${cIndex + 1} / ${cItems.length}`;
 

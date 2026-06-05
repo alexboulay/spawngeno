@@ -11,8 +11,26 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, 'public')));
 
 const ITEMS = [
-  '🍎','🍌','🍒','🍇','🍓','🌮','🍕','🍜','🍣','🍩',
-  '🎮','🎯','🎲','🎸','🚀','🚗','⚽','🎃','🦁','🐸',
+  'alien-svgrepo-com-2.svg',
+  'alien-svgrepo-com-3.svg',
+  'alien-svgrepo-com-4.svg',
+  'alien-svgrepo-com-5.svg',
+  'alien-svgrepo-com.svg',
+  'alien-ufo-svgrepo-com.svg',
+  'astrology-horoscope-svgrepo-com.svg',
+  'astronaut-svgrepo-com.svg',
+  'black-hole-svgrepo-com.svg',
+  'comet-asteroid-svgrepo-com.svg',
+  'comet-svgrepo-com.svg',
+  'constellation-svgrepo-com-2.svg',
+  'constellation-svgrepo-com.svg',
+  'moon-rover-svgrepo-com.svg',
+  'moon-svgrepo-com.svg',
+  'observation-eye-svgrepo-com.svg',
+  'orbit-svgrepo-com-2.svg',
+  'orbit-svgrepo-com.svg',
+  'planet-earth-geography-svgrepo-com.svg',
+  'planet-svgrepo-com-2.svg',
 ];
 const REF_COUNT = 6;
 const DISTRACTOR_COUNT = 6;
