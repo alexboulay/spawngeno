@@ -107,7 +107,7 @@
     .ref-item {
       flex-shrink: 0;
       width: 60px; height: 60px;
-      background: #fff; border-radius: 12px; padding: 8px;
+      background: var(--round-card, #16213e); border-radius: 12px; padding: 8px;
     }
     .ref-item img { display: block; width: 44px; height: 44px; object-fit: contain; }
 
@@ -136,8 +136,12 @@
     .score-acc  { color: var(--dim); font-size: .9rem; }
     .score-pts  { color: var(--accent); font-weight: 700; }
     .score-tot  { color: var(--yellow); font-weight: 700; }
-    .score-found { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
-    .score-found img { width: 36px; height: 36px; object-fit: contain; background: rgba(255,255,255,.07); border-radius: 6px; padding: 4px; }
+    .score-found { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+    .score-found img { width: 36px; height: 36px; object-fit: contain; border-radius: 7px; padding: 4px; }
+    .icon-correct { background: rgba(78,204,163,.18); border: 2px solid var(--accent); }
+    .icon-missed  { background: rgba(255,255,255,.04); border: 2px solid var(--dim); opacity: .55; }
+    .icon-wrong   { background: rgba(233,69,96,.18);  border: 2px solid var(--primary); }
+    .icon-sep { width: 1px; height: 30px; background: rgba(255,255,255,.1); margin: 0 2px; }
 
     .elim-banner {
       border-radius: var(--r); padding: 12px 16px;
@@ -297,7 +301,13 @@ socket.on('lobby_update', ({ players }) => {
   updatePlayerSidebar(players.map(p => ({ ...p, eliminated: false })));
 });
 
-socket.on('phase1_start', ({ items, itemDuration, round }) => {
+socket.on('phase1_start', ({ items, itemDuration, round, theme }) => {
+  if (theme) {
+    document.body.style.backgroundImage = `url('${theme.bgImage}')`;
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
+    document.documentElement.style.setProperty('--round-card', theme.card);
+  }
   document.getElementById('round-num').textContent = round;
   document.getElementById('round-badge').style.display = '';
   document.getElementById('phase1-ref-items').innerHTML =
@@ -332,14 +342,21 @@ socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => 
   document.getElementById('res-ref-items').innerHTML =
     refItems.map(i => `<div class="ref-item"><img src="/assets/${i}" alt="item"></div>`).join('');
 
-  document.getElementById('scores-list').innerHTML = scores.map(s => `
+  document.getElementById('scores-list').innerHTML = scores.map(s => {
+    const correct = (s.foundItems  || []).map(i => `<img class="icon-correct" src="/assets/${i}" alt="" title="Correct">`).join('');
+    const missed  = (s.missedItems || []).map(i => `<img class="icon-missed"  src="/assets/${i}" alt="" title="Missed">`).join('');
+    const wrong   = (s.wrongItems  || []).map(i => `<img class="icon-wrong"   src="/assets/${i}" alt="" title="Wrong pick">`).join('');
+    const sep1 = missed ? '<div class="icon-sep"></div>' : '';
+    const sep2 = wrong  ? '<div class="icon-sep"></div>' : '';
+    return `
     <div class="score-row${s.eliminated ? ' out' : ''}">
       <span class="score-name">${esc(s.name)}${s.eliminated ? ' ❌' : ''}</span>
       <span class="score-acc">${s.accuracy}%</span>
       <span class="score-pts">+${s.roundScore}</span>
       <span class="score-tot">${s.totalScore}</span>
-      <div class="score-found">${(s.foundItems || []).map(i => `<img src="/assets/${i}" alt="">`).join('')}</div>
-    </div>`).join('');
+      <div class="score-found">${correct}${sep1}${missed}${sep2}${wrong}</div>
+    </div>`;
+  }).join('');
 
   const banner = document.getElementById('elim-banner');
   if (eliminated) {
@@ -372,6 +389,10 @@ socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => 
 });
 
 socket.on('game_reset', () => {
+  document.body.style.backgroundImage = '';
+  document.body.style.backgroundSize = '';
+  document.body.style.backgroundPosition = '';
+  document.documentElement.style.removeProperty('--round-card');
   document.getElementById('round-badge').style.display = 'none';
   document.getElementById('host-error').textContent = '';
   document.getElementById('elim-banner').style.removeProperty('background');

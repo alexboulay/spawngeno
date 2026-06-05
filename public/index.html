@@ -106,7 +106,7 @@
       width: clamp(140px, 32vw, 180px);
       height: clamp(140px, 32vw, 180px);
       border-radius: 20px;
-      background: #fff;
+      background: var(--round-card, #16213e);
       overflow: hidden;
       user-select: none; -webkit-user-select: none;
     }
@@ -118,29 +118,32 @@
     #p1-emoji img { display: block; width: 100%; height: auto; }
 
     /* ── phase 2 selection grid ── */
+    #phase2-screen.active { padding-top: 16px; padding-bottom: 16px; }
+
     .selection-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: clamp(8px, 2vw, 14px);
-      margin: 4px 0;
+      grid-template-columns: repeat(3, 72px);
+      gap: 10px;
+      margin: 4px auto;
+      justify-content: center;
     }
     .sel-item {
-      background: #fff;
-      border-radius: var(--r);
+      background: var(--round-card, #16213e);
+      border-radius: 12px;
       aspect-ratio: 1;
-      padding: 12%;
+      padding: clamp(5px, 6%, 14px);
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; border: 3px solid transparent;
+      cursor: pointer; border: 3px solid rgba(255,255,255,.08);
       transition: border-color .15s, background .15s, transform .08s;
       user-select: none; -webkit-user-select: none;
-      box-shadow: 0 2px 10px rgba(0,0,0,.35);
+      box-shadow: 0 2px 10px rgba(0,0,0,.5);
     }
     .sel-item.selected {
       border-color: var(--accent);
-      background: rgba(78, 204, 163, .12);
+      background: color-mix(in srgb, var(--round-card, #16213e) 70%, #4ecca3 30%);
     }
     .sel-item:active { transform: scale(.91); }
-    .sel-item img { display: block; width: 100%; height: auto; }
+    .sel-item img { display: block; width: 100%; height: auto; object-fit: contain; }
 
     .sel-count { font-size: .9rem; color: var(--dim); margin-top: 6px; }
     .sel-count span { color: var(--accent); font-weight: 700; }
@@ -154,7 +157,7 @@
     .recap-items { display: flex; gap: 8px; flex-wrap: wrap; }
     .recap-item {
       width: 44px; height: 44px;
-      background: #fff; border-radius: 8px; padding: 6px;
+      background: var(--round-card, #16213e); border-radius: 8px; padding: 6px;
       display: inline-flex; align-items: center; justify-content: center;
     }
     .recap-item img { display: block; width: 100%; height: auto; }
@@ -179,8 +182,12 @@
     .score-acc  { color: var(--dim); font-size: .9rem; }
     .score-pts  { color: var(--accent); font-weight: 700; }
     .score-tot  { color: var(--yellow); font-weight: 700; }
-    .score-found { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
-    .score-found img { width: 32px; height: 32px; object-fit: contain; background: rgba(255,255,255,.07); border-radius: 6px; padding: 3px; }
+    .score-found { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+    .score-found img { width: 34px; height: 34px; object-fit: contain; border-radius: 7px; padding: 4px; }
+    .icon-correct { background: rgba(78,204,163,.18); border: 2px solid var(--accent); }
+    .icon-missed  { background: rgba(255,255,255,.04); border: 2px solid var(--dim); opacity: .55; }
+    .icon-wrong   { background: rgba(233,69,96,.18);  border: 2px solid var(--primary); }
+    .icon-sep { width: 1px; height: 28px; background: rgba(255,255,255,.1); margin: 0 2px; }
 
     .elim-banner {
       border-radius: var(--r); padding: 12px 16px;
@@ -380,7 +387,13 @@ socket.on('lobby_update', ({ players }) => {
 
 // ── phase 1: carousel (memorize) ─────────────────────────────────────────────
 
-socket.on('phase1_start', ({ items, itemDuration, round }) => {
+socket.on('phase1_start', ({ items, itemDuration, round, theme }) => {
+  if (theme) {
+    document.body.style.backgroundImage = `url('${theme.bgImage}')`;
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
+    document.documentElement.style.setProperty('--round-card', theme.card);
+  }
   document.getElementById('round-num').textContent = round;
   document.getElementById('p1-title').textContent  = 'Memorize!';
   document.getElementById('p1-hint').textContent   = 'Watch carefully!';
@@ -442,6 +455,7 @@ socket.on('phase2_start', ({ items, totalDuration }) => {
   p2Submitted = false;
 
   const grid = document.getElementById('selection-grid');
+  grid.style.gridTemplateColumns = `repeat(${items.length > 9 ? 4 : 3}, 72px)`;
   grid.innerHTML = items.map(item =>
     `<div class="sel-item" data-item="${esc(item)}"><img src="/assets/${item}" alt="item"></div>`
   ).join('');
@@ -488,14 +502,21 @@ socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => 
   document.getElementById('res-ref-items').innerHTML =
     refItems.map(i => `<span class="recap-item"><img src="/assets/${i}" alt="item"></span>`).join('');
 
-  document.getElementById('scores-list').innerHTML = scores.map(s => `
+  document.getElementById('scores-list').innerHTML = scores.map(s => {
+    const correct = (s.foundItems  || []).map(i => `<img class="icon-correct" src="/assets/${i}" alt="" title="Correct">`).join('');
+    const missed  = (s.missedItems || []).map(i => `<img class="icon-missed"  src="/assets/${i}" alt="" title="Missed">`).join('');
+    const wrong   = (s.wrongItems  || []).map(i => `<img class="icon-wrong"   src="/assets/${i}" alt="" title="Wrong pick">`).join('');
+    const sep1 = missed ? '<div class="icon-sep"></div>' : '';
+    const sep2 = wrong  ? '<div class="icon-sep"></div>' : '';
+    return `
     <div class="score-row${s.eliminated ? ' out' : ''}">
       <span class="score-name">${esc(s.name)}${s.eliminated ? ' ❌' : ''}</span>
       <span class="score-acc">${s.accuracy}%</span>
       <span class="score-pts">+${s.roundScore}</span>
       <span class="score-tot">${s.totalScore}</span>
-      <div class="score-found">${(s.foundItems || []).map(i => `<img src="/assets/${i}" alt="">`).join('')}</div>
-    </div>`).join('');
+      <div class="score-found">${correct}${sep1}${missed}${sep2}${wrong}</div>
+    </div>`;
+  }).join('');
 
   const banner = document.getElementById('elim-banner');
   if (eliminated) {
@@ -518,6 +539,10 @@ socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => 
 socket.on('game_reset', () => {
   if (p1Timer) { clearTimeout(p1Timer); p1Timer = null; }
   stopMusic();
+  document.body.style.backgroundImage = '';
+  document.body.style.backgroundSize = '';
+  document.body.style.backgroundPosition = '';
+  document.documentElement.style.removeProperty('--round-card');
   show('lobby-screen');
 });
 

@@ -12,47 +12,38 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/host', (req, res) => res.sendFile(path.join(__dirname, 'public', 'host.html')));
 
 const ITEMS = [
-  'alien-svgrepo-com-2.svg',
-  'alien-svgrepo-com-3.svg',
-  'alien-svgrepo-com-4.svg',
-  'alien-svgrepo-com-5.svg',
-  'alien-svgrepo-com.svg',
-  'alien-ufo-svgrepo-com.svg',
-  'astrology-horoscope-svgrepo-com.svg',
-  'astronaut-svgrepo-com.svg',
-  'black-hole-svgrepo-com.svg',
-  'calendar-svgrepo-com.svg',
-  'comet-asteroid-svgrepo-com.svg',
-  'comet-svgrepo-com.svg',
-  'compass-tools-and-utensils-svgrepo-com.svg',
-  'constellation-svgrepo-com-2.svg',
-  'constellation-svgrepo-com.svg',
-  'moon-rover-svgrepo-com.svg',
-  'moon-svgrepo-com.svg',
-  'observation-eye-svgrepo-com.svg',
-  'orbit-svgrepo-com-2.svg',
-  'orbit-svgrepo-com.svg',
-  'planet-earth-geography-svgrepo-com.svg',
-  'planet-miscellaneous-svgrepo-com-2.svg',
-  'planet-miscellaneous-svgrepo-com.svg',
-  'planet-solar-system-svgrepo-com.svg',
-  'planet-space-svgrepo-com.svg',
-  'planet-svgrepo-com-2.svg',
-  'planet-svgrepo-com-3.svg',
-  'planet-svgrepo-com-4.svg',
-  'planet-svgrepo-com.svg',
-  'planet-universe-svgrepo-com.svg',
-  'planets-miscellaneous-svgrepo-com.svg',
-  'spacecraft-rocket-ship-launch-svgrepo-com.svg',
-  'spacecraft-rocket-svgrepo-com.svg',
-  'stars-star-svgrepo-com.svg',
-  'sun-svgrepo-com.svg',
-  'telescope-tools-and-utensils-svgrepo-com.svg',
-  'ufo-alien-svgrepo-com.svg',
-  'ufo-svgrepo-com-2.svg',
-  'ufo-svgrepo-com-3.svg',
-  'ufo-svgrepo-com.svg',
+  '01_crystal_ball.svg',
+  '02_comet.svg',
+  '03_compass.svg',
+  '04_hand_mirror.svg',
+  '05_rocket_up.svg',
+  '06_star_outline.svg',
+  '07_rocket_diagonal.svg',
+  '08_star_small.svg',
+  '09_alien.svg',
+  '10_saturn.svg',
+  '11_astronaut_helmet.svg',
+  '12_ringed_planet.svg',
+  '13_black_hole.svg',
+  '14_telescope.svg',
+  '15_satellite.svg',
+  '16_moon.svg',
+  '17_galaxy.svg',
+  '18_space_station.svg',
+  '19_meteor.svg',
+  '20_ray_gun.svg',
+  '21_constellation.svg',
+  '22_ufo.svg',
+  '23_hourglass.svg',
 ];
+const ROUND_THEMES = [
+  { bgImage: '/assets/backgrounds/bg1.png', card: '#062030' },  // cyan nebula
+  { bgImage: '/assets/backgrounds/bg2.png', card: '#2a1200' },  // orange swirl
+  { bgImage: '/assets/backgrounds/bg3.png', card: '#2a0820' },  // pink/red swirl
+  { bgImage: '/assets/backgrounds/bg4.png', card: '#150a30' },  // purple black hole
+  { bgImage: '/assets/backgrounds/bg5.png', card: '#280808' },  // red swirl
+];
+
 const REF_COUNT = 6;
 const DISTRACTOR_COUNT = 6;
 const PHASE1_ITEM_DURATION = 2000;
@@ -117,11 +108,14 @@ function startRound() {
   const itemDuration = Math.max(500, Math.round(PHASE1_ITEM_DURATION * Math.pow(0.95, state.round - 1)));
   const phase1Duration = state.refItems.length * itemDuration;
 
+  const theme = ROUND_THEMES[(state.round - 1) % ROUND_THEMES.length];
+
   state.phase = 'phase1';
   io.emit('phase1_start', {
     items: state.refItems,
     itemDuration,
     round: state.round,
+    theme,
   });
 
   setTimeout(() => {
