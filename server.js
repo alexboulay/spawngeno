@@ -21,8 +21,10 @@ const ITEMS = [
   'astrology-horoscope-svgrepo-com.svg',
   'astronaut-svgrepo-com.svg',
   'black-hole-svgrepo-com.svg',
+  'calendar-svgrepo-com.svg',
   'comet-asteroid-svgrepo-com.svg',
   'comet-svgrepo-com.svg',
+  'compass-tools-and-utensils-svgrepo-com.svg',
   'constellation-svgrepo-com-2.svg',
   'constellation-svgrepo-com.svg',
   'moon-rover-svgrepo-com.svg',
@@ -31,7 +33,25 @@ const ITEMS = [
   'orbit-svgrepo-com-2.svg',
   'orbit-svgrepo-com.svg',
   'planet-earth-geography-svgrepo-com.svg',
+  'planet-miscellaneous-svgrepo-com-2.svg',
+  'planet-miscellaneous-svgrepo-com.svg',
+  'planet-solar-system-svgrepo-com.svg',
+  'planet-space-svgrepo-com.svg',
   'planet-svgrepo-com-2.svg',
+  'planet-svgrepo-com-3.svg',
+  'planet-svgrepo-com-4.svg',
+  'planet-svgrepo-com.svg',
+  'planet-universe-svgrepo-com.svg',
+  'planets-miscellaneous-svgrepo-com.svg',
+  'spacecraft-rocket-ship-launch-svgrepo-com.svg',
+  'spacecraft-rocket-svgrepo-com.svg',
+  'stars-star-svgrepo-com.svg',
+  'sun-svgrepo-com.svg',
+  'telescope-tools-and-utensils-svgrepo-com.svg',
+  'ufo-alien-svgrepo-com.svg',
+  'ufo-svgrepo-com-2.svg',
+  'ufo-svgrepo-com-3.svg',
+  'ufo-svgrepo-com.svg',
 ];
 const REF_COUNT = 6;
 const DISTRACTOR_COUNT = 6;
@@ -144,8 +164,10 @@ function endRound() {
       truePositives * POINTS_CORRECT - falsePositives * penaltyPerFP + speedBonus
     ));
 
-    const foundItems = state.refItems.filter(item => sel.has(item));
-    return { player: p, accuracy, score, elapsed, foundItems };
+    const foundItems  = state.refItems.filter(item =>  sel.has(item));
+    const missedItems = state.refItems.filter(item => !sel.has(item));
+    const wrongItems  = [...sel].filter(item => !refSet.has(item));
+    return { player: p, accuracy, score, elapsed, foundItems, missedItems, wrongItems };
   });
 
   scores.sort((a, b) => a.score - b.score || b.elapsed - a.elapsed);
@@ -171,7 +193,9 @@ function endRound() {
       roundScore: s.score,
       totalScore: state.players[s.player.id].totalScore,
       eliminated: state.players[s.player.id].eliminated,
-      foundItems: s.foundItems,
+      foundItems:  s.foundItems,
+      missedItems: s.missedItems,
+      wrongItems:  s.wrongItems,
     })),
     eliminated,
     winner,
