@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpotIt! — Host</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0d0d1a;
+      --surface: #1a1a2e;
+      --card:    #16213e;
+      --primary: #e94560;
+      --accent:  #4ecca3;
+      --yellow:  #f5c518;
+      --text:    #eaeaea;
+      --dim:     #888;
+      --r:       14px;
+    }
+
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh; padding: 32px 24px;
+    }
+
+    .header {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 32px;
+    }
+    .header h1 { font-size: 1.8rem; }
+    .host-badge {
+      background: var(--primary); color: #fff;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: .75rem; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .round-badge {
+      background: var(--surface); color: var(--dim);
+      padding: 3px 10px; border-radius: 20px;
+      font-size: .75rem; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+
+    /* ── sidebar (always visible) ── */
+    .sidebar { display: flex; flex-direction: column; gap: 12px; }
+
+    .panel-box {
+      background: var(--surface); border-radius: var(--r); padding: 18px;
+    }
+    .panel-box h3 {
+      font-size: .75rem; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--dim); margin-bottom: 12px;
+    }
+
+    .player-list { display: flex; flex-direction: column; gap: 6px; }
+    .player-row {
+      background: var(--card); border-radius: 10px;
+      padding: 10px 12px; font-size: .95rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .player-row.eliminated { opacity: .4; text-decoration: line-through; }
+    .player-score { color: var(--yellow); font-weight: 700; font-size: .9rem; }
+
+    .player-count { color: var(--dim); font-size: .85rem; margin-top: 8px; }
+
+    /* ── main area ── */
+    .main { display: flex; flex-direction: column; gap: 16px; }
+
+    .status-card {
+      background: var(--surface); border-radius: var(--r); padding: 24px;
+    }
+    .status-card h2 { font-size: 1.5rem; margin-bottom: 8px; }
+    .status-sub { color: var(--dim); font-size: .95rem; margin-bottom: 20px; }
+
+    .big-btn {
+      padding: 16px 32px; font-size: 1.15rem; font-weight: 700;
+      border: none; border-radius: var(--r); cursor: pointer;
+      background: var(--primary); color: #fff;
+      transition: opacity .2s, transform .1s;
+      min-width: 180px;
+    }
+    .big-btn:active { transform: scale(.97); }
+    .big-btn:disabled { opacity: .35; cursor: not-allowed; }
+    .big-btn.ghost {
+      background: transparent; border: 2px solid var(--accent); color: var(--accent);
+    }
+
+    .error-msg { color: var(--primary); font-size: .9rem; margin-top: 10px; min-height: 18px; }
+
+    /* ── phase indicators ── */
+    .phase-label {
+      display: inline-block; padding: 5px 14px; border-radius: 20px;
+      font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+      margin-bottom: 16px;
+    }
+    .phase-label.p1 { background: rgba(78,204,163,.2); color: var(--accent); }
+    .phase-label.p2 { background: rgba(233,69,96,.2); color: var(--primary); }
+    .phase-label.res { background: rgba(245,197,24,.2); color: var(--yellow); }
+
+    /* ── ref items preview ── */
+    .ref-items-grid {
+      display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0;
+    }
+    .ref-item {
+      font-size: 2.2rem; background: var(--card); border-radius: 10px; padding: 10px;
+    }
+
+    /* ── submission bar ── */
+    .sub-bar-wrap { height: 10px; background: var(--card); border-radius: 5px; overflow: hidden; margin: 10px 0; }
+    .sub-bar-fill { height: 100%; background: var(--accent); border-radius: 5px; transition: width .3s ease; width: 0%; }
+    .sub-label { font-size: .9rem; color: var(--dim); }
+    .sub-label span { color: var(--accent); font-weight: 700; }
+
+    /* ── scores table ── */
+    .scores-hdr {
+      display: grid; grid-template-columns: 1fr 70px 60px 60px;
+      gap: 6px; padding: 0 14px;
+      color: var(--dim); font-size: .72rem; text-transform: uppercase;
+      letter-spacing: .5px; margin-bottom: 4px; text-align: right;
+    }
+    .scores-hdr span:first-child { text-align: left; }
+    .scores-list { display: flex; flex-direction: column; gap: 6px; }
+    .score-row {
+      background: var(--card); border-radius: var(--r); padding: 11px 14px;
+      display: grid; grid-template-columns: 1fr 70px 60px 60px;
+      align-items: center; gap: 6px; text-align: right;
+    }
+    .score-row.out { opacity: .4; }
+    .score-name { text-align: left; font-weight: 600; }
+    .score-acc  { color: var(--dim); font-size: .9rem; }
+    .score-pts  { color: var(--accent); font-weight: 700; }
+    .score-tot  { color: var(--yellow); font-weight: 700; }
+
+    .elim-banner {
+      border-radius: var(--r); padding: 12px 16px;
+      font-size: 1.05rem; font-weight: 700; margin: 14px 0;
+      background: rgba(233,69,96,.18); color: var(--primary);
+    }
+
+    /* ── winner ── */
+    .winner-box { text-align: center; padding: 32px 0; }
+    .winner-box .trophy { font-size: 4rem; margin-bottom: 8px; }
+    .winner-box h2 { font-size: 2rem; color: var(--accent); margin-bottom: 4px; }
+    .winner-box p { color: var(--dim); margin-bottom: 24px; }
+
+    /* timer bar */
+    .bar-wrap { height: 8px; background: var(--card); border-radius: 4px; overflow: hidden; margin: 16px 0 0; }
+    .bar-fill  { height: 100%; border-radius: 4px; width: 100%; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div style="font-size:1.8rem">🎯</div>
+  <h1>SpotIt!</h1>
+  <span class="host-badge">Host</span>
+  <span id="round-badge" class="round-badge" style="display:none">Round <span id="round-num">1</span></span>
+</div>
+
+<div class="layout">
+
+  <!-- sidebar: always-visible player list -->
+  <aside class="sidebar">
+    <div class="panel-box">
+      <h3>Players</h3>
+      <div id="player-list" class="player-list">
+        <div style="color:var(--dim);font-size:.9rem">No players yet…</div>
+      </div>
+      <div id="player-count" class="player-count"></div>
+    </div>
+  </aside>
+
+  <!-- main: phase-dependent content -->
+  <main class="main">
+
+    <!-- LOBBY -->
+    <div id="panel-lobby" class="status-card">
+      <h2>Waiting for players</h2>
+      <p class="status-sub">Players join at the network address shown in your terminal.</p>
+      <button id="start-btn" class="big-btn" disabled>▶ Start Game</button>
+      <div id="host-error" class="error-msg"></div>
+    </div>
+
+    <!-- PHASE 1 -->
+    <div id="panel-phase1" class="status-card" style="display:none">
+      <span class="phase-label p1">Phase 1 — Memorize</span>
+      <h2>Players are memorizing…</h2>
+      <p class="status-sub">These items will be shown to all players for 5 seconds.</p>
+      <div id="phase1-ref-items" class="ref-items-grid"></div>
+      <div class="bar-wrap"><div id="p1-bar" class="bar-fill" style="background:var(--accent)"></div></div>
+    </div>
+
+    <!-- PHASE 2 -->
+    <div id="panel-phase2" class="status-card" style="display:none">
+      <span class="phase-label p2">Phase 2 — Choose</span>
+      <h2>Players are choosing…</h2>
+      <p class="status-sub">Items slide across — players tap the ones they remember.</p>
+      <div class="sub-bar-wrap"><div id="sub-bar" class="sub-bar-fill"></div></div>
+      <div class="sub-label"><span id="sub-count">0</span> / <span id="sub-total">0</span> submitted</div>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="panel-results" class="status-card" style="display:none">
+      <span class="phase-label res">Results — Round <span id="res-round">1</span></span>
+
+      <div style="margin:14px 0 12px">
+        <div style="font-size:.8rem;color:var(--dim);margin-bottom:8px">The items were:</div>
+        <div id="res-ref-items" class="ref-items-grid"></div>
+      </div>
+
+      <div class="scores-hdr">
+        <span>Player</span><span>Accuracy</span><span>+Pts</span><span>Total</span>
+      </div>
+      <div id="scores-list" class="scores-list"></div>
+
+      <div id="elim-banner" style="display:none" class="elim-banner"></div>
+
+      <div style="margin-top:20px;display:flex;gap:12px">
+        <button id="next-btn" class="big-btn" style="display:none">Next Round →</button>
+        <button id="play-again-btn" class="big-btn ghost" style="display:none">Play Again</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+
+socket.on('connect', () => {
+  socket.emit('join_host');
+});
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showPanel(id) {
+  ['lobby','phase1','phase2','results'].forEach(p => {
+    document.getElementById(`panel-${p}`).style.display = p === id ? '' : 'none';
+  });
+}
+
+function setBar(el, ms, color) {
+  if (color) el.style.background = color;
+  el.style.transition = 'none';
+  el.style.width = '100%';
+  el.offsetHeight;
+  el.style.transition = `width ${ms}ms linear`;
+  el.style.width = '0%';
+}
+
+function updatePlayerSidebar(players) {
+  const list = document.getElementById('player-list');
+  if (!players.length) {
+    list.innerHTML = '<div style="color:var(--dim);font-size:.9rem">No players yet…</div>';
+    document.getElementById('player-count').textContent = '';
+    document.getElementById('start-btn').disabled = true;
+    return;
+  }
+  list.innerHTML = players.map(p => `
+    <div class="player-row${p.eliminated ? ' eliminated' : ''}">
+      <span>${esc(p.name)}</span>
+      ${p.totalScore !== undefined ? `<span class="player-score">${p.totalScore}</span>` : ''}
+    </div>`).join('');
+  const active = players.filter(p => !p.eliminated).length;
+  document.getElementById('player-count').textContent =
+    `${players.length} player${players.length !== 1 ? 's' : ''} connected`;
+  document.getElementById('start-btn').disabled = active < 2;
+}
+
+// ── socket events ─────────────────────────────────────────────────────────────
+
+socket.on('host_state', ({ phase, round, players }) => {
+  document.getElementById('round-num').textContent = round;
+  document.getElementById('round-badge').style.display = round > 0 ? '' : 'none';
+  updatePlayerSidebar(players);
+
+  if (phase === 'lobby') showPanel('lobby');
+  else if (phase === 'phase1') showPanel('phase1');
+  else if (phase === 'phase2') showPanel('phase2');
+  else if (phase === 'results' || phase === 'gameover') showPanel('results');
+});
+
+socket.on('lobby_update', ({ players }) => {
+  updatePlayerSidebar(players.map(p => ({ ...p, eliminated: false })));
+});
+
+socket.on('phase1_start', ({ items, itemDuration, round }) => {
+  document.getElementById('round-num').textContent = round;
+  document.getElementById('round-badge').style.display = '';
+  document.getElementById('phase1-ref-items').innerHTML =
+    items.map(i => `<div class="ref-item">${i}</div>`).join('');
+  setBar(document.getElementById('p1-bar'), items.length * itemDuration, 'var(--accent)');
+  showPanel('phase1');
+});
+
+socket.on('phase1_hide', () => {
+  document.querySelector('#panel-phase1 h2').textContent = 'Get ready…';
+  const bar = document.getElementById('p1-bar');
+  bar.style.transition = 'none'; bar.style.width = '0%';
+});
+
+socket.on('phase2_start', ({ totalDuration }) => {
+  document.getElementById('sub-count').textContent = '0';
+  document.getElementById('sub-total').textContent = String(Object.keys(socket).length || '?');
+  document.getElementById('sub-bar').style.width = '0%';
+  showPanel('phase2');
+});
+
+socket.on('submissions_update', ({ submitted, total }) => {
+  document.getElementById('sub-count').textContent = submitted;
+  document.getElementById('sub-total').textContent = total;
+  const pct = total > 0 ? (submitted / total * 100) : 0;
+  document.getElementById('sub-bar').style.width = `${pct}%`;
+});
+
+socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => {
+  document.getElementById('res-round').textContent = round;
+
+  document.getElementById('res-ref-items').innerHTML =
+    refItems.map(i => `<div class="ref-item">${i}</div>`).join('');
+
+  document.getElementById('scores-list').innerHTML = scores.map(s => `
+    <div class="score-row${s.eliminated ? ' out' : ''}">
+      <span class="score-name">${esc(s.name)}${s.eliminated ? ' ❌' : ''}</span>
+      <span class="score-acc">${s.accuracy}%</span>
+      <span class="score-pts">+${s.roundScore}</span>
+      <span class="score-tot">${s.totalScore}</span>
+    </div>`).join('');
+
+  const banner = document.getElementById('elim-banner');
+  if (eliminated) {
+    banner.textContent = `❌ ${eliminated} has been eliminated!`;
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+
+  const nextBtn      = document.getElementById('next-btn');
+  const playAgainBtn = document.getElementById('play-again-btn');
+
+  if (winner) {
+    nextBtn.style.display      = 'none';
+    playAgainBtn.style.display = 'block';
+    // update sidebar to show winner
+    updatePlayerSidebar(scores.map(s => ({ name: s.name, eliminated: s.eliminated, totalScore: s.totalScore })));
+    // show a winner banner in the results panel
+    banner.textContent = `🏆 ${winner} wins the game!`;
+    banner.style.background = 'rgba(78,204,163,.18)';
+    banner.style.color = 'var(--accent)';
+    banner.style.display = 'block';
+  } else {
+    nextBtn.style.display      = 'block';
+    playAgainBtn.style.display = 'none';
+    updatePlayerSidebar(scores.map(s => ({ name: s.name, eliminated: s.eliminated, totalScore: s.totalScore })));
+  }
+
+  showPanel('results');
+});
+
+socket.on('game_reset', () => {
+  document.getElementById('round-badge').style.display = 'none';
+  document.getElementById('host-error').textContent = '';
+  document.getElementById('elim-banner').style.removeProperty('background');
+  document.getElementById('elim-banner').style.removeProperty('color');
+  showPanel('lobby');
+});
+
+socket.on('host_error', msg => {
+  document.getElementById('host-error').textContent = msg;
+});
+
+// ── controls ──────────────────────────────────────────────────────────────────
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  document.getElementById('host-error').textContent = '';
+  socket.emit('start_game');
+});
+
+document.getElementById('next-btn').addEventListener('click', () => {
+  socket.emit('next_round');
+});
+
+document.getElementById('play-again-btn').addEventListener('click', () => {
+  socket.emit('play_again');
+});
+</script>
+</body>
+</html>

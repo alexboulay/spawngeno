@@ -9,6 +9,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.get('/host', (req, res) => res.sendFile(path.join(__dirname, 'public', 'host.html')));
 
 const ITEMS = [
   '🍎','🍌','🍒','🍇','🍓','🌮','🍕','🍜','🍣','🍩',
@@ -16,14 +17,16 @@ const ITEMS = [
 ];
 const REF_COUNT = 6;
 const DISTRACTOR_COUNT = 6;
-const PHASE1_DURATION = 5000;
-const PHASE2_ITEM_DURATION = 2000;
-const PHASE2_BUFFER = 2000;
+const PHASE1_ITEM_DURATION = 2000;
+const PHASE2_DURATION = 15000;
+const POINTS_CORRECT = 10;
+const POINTS_PENALTY = 8;
+const POINTS_SPEED   = 30;
 
 const state = {
   phase: 'lobby',
   players: {},
-  hostId: null,
+  hostSocketId: null,
   round: 0,
   refItems: [],
   carouselItems: [],
@@ -46,8 +49,17 @@ const activePlayers = () => Object.values(state.players).filter(p => !p.eliminat
 function broadcastLobby() {
   io.emit('lobby_update', {
     players: Object.values(state.players).map(p => ({ id: p.id, name: p.name })),
-    hostId: state.hostId,
   });
+}
+
+function emitToHost(event, data) {
+  if (state.hostSocketId) io.to(state.hostSocketId).emit(event, data);
+}
+
+function broadcastSubmissions() {
+  const submitted = Object.values(state.answers).filter(a => a.time !== null).length;
+  const total = activePlayers().length;
+  emitToHost('submissions_update', { submitted, total });
 }
 
 function startRound() {
@@ -65,31 +77,31 @@ function startRound() {
     state.answers[p.id] = { selected: [], time: null };
   });
 
+  const phase1Duration = state.refItems.length * PHASE1_ITEM_DURATION;
+
   state.phase = 'phase1';
   io.emit('phase1_start', {
     items: state.refItems,
-    duration: PHASE1_DURATION,
+    itemDuration: PHASE1_ITEM_DURATION,
     round: state.round,
   });
 
   setTimeout(() => {
     io.emit('phase1_hide');
     setTimeout(startPhase2, 1500);
-  }, PHASE1_DURATION);
+  }, phase1Duration);
 }
 
 function startPhase2() {
   state.phase = 'phase2';
   state.phase2StartTime = Date.now();
-  const totalDuration = state.carouselItems.length * PHASE2_ITEM_DURATION + PHASE2_BUFFER;
 
   io.emit('phase2_start', {
     items: state.carouselItems,
-    itemDuration: PHASE2_ITEM_DURATION,
-    totalDuration,
+    totalDuration: PHASE2_DURATION,
   });
 
-  state.phase2Timer = setTimeout(endRound, totalDuration);
+  state.phase2Timer = setTimeout(endRound, PHASE2_DURATION);
 }
 
 function endRound() {
@@ -97,18 +109,20 @@ function endRound() {
   state.phase = 'results';
 
   const refSet = new Set(state.refItems);
-  const total = state.carouselItems.length;
-  const duration = total * PHASE2_ITEM_DURATION + PHASE2_BUFFER;
+  const duration = PHASE2_DURATION;
 
   const scores = activePlayers().map(p => {
     const ans = state.answers[p.id] || { selected: [], time: null };
     const sel = new Set(ans.selected);
 
-    const correct = state.carouselItems.filter(item => refSet.has(item) === sel.has(item)).length;
-    const accuracy = correct / total;
-    const elapsed = ans.time ? ans.time - state.phase2StartTime : duration;
-    const speedBonus = Math.max(0, 1 - elapsed / duration);
-    const score = Math.round(accuracy * 100 + speedBonus * 50);
+    const truePositives  = state.refItems.filter(item => sel.has(item)).length;
+    const falsePositives = [...sel].filter(item => !refSet.has(item)).length;
+    const accuracy       = truePositives / state.refItems.length;
+    const elapsed        = ans.time ? ans.time - state.phase2StartTime : duration;
+    const speedBonus     = Math.max(0, 1 - elapsed / duration) * POINTS_SPEED;
+    const score          = Math.max(0, Math.round(
+      truePositives * POINTS_CORRECT - falsePositives * POINTS_PENALTY + speedBonus
+    ));
 
     return { player: p, accuracy, score, elapsed };
   });
@@ -178,6 +192,41 @@ function handleDisconnectDuringGame() {
 io.on('connection', socket => {
   console.log('+ connected:', socket.id);
 
+  // ── host ──────────────────────────────────────────────────────────────────
+
+  socket.on('join_host', () => {
+    state.hostSocketId = socket.id;
+    console.log('  host connected:', socket.id);
+    // send current state snapshot so host syncs on reconnect
+    socket.emit('host_state', {
+      phase: state.phase,
+      round: state.round,
+      players: Object.values(state.players).map(p => ({ id: p.id, name: p.name, eliminated: p.eliminated })),
+    });
+  });
+
+  socket.on('start_game', () => {
+    if (socket.id !== state.hostSocketId || state.phase !== 'lobby') return;
+    if (activePlayers().length < 2) {
+      socket.emit('host_error', 'Need at least 2 players to start');
+      return;
+    }
+    startRound();
+  });
+
+  socket.on('next_round', () => {
+    if (socket.id !== state.hostSocketId || state.phase !== 'results') return;
+    startRound();
+  });
+
+  socket.on('play_again', () => {
+    if (socket.id !== state.hostSocketId) return;
+    resetGame();
+    io.emit('game_reset');
+  });
+
+  // ── players ───────────────────────────────────────────────────────────────
+
   socket.on('join', ({ name }) => {
     if (state.phase !== 'lobby') {
       socket.emit('join_error', 'Game already in progress');
@@ -187,19 +236,8 @@ io.on('connection', socket => {
     if (!trimmed) return;
 
     state.players[socket.id] = { id: socket.id, name: trimmed, eliminated: false, totalScore: 0 };
-    if (!state.hostId) state.hostId = socket.id;
-
     socket.emit('joined', { id: socket.id });
     broadcastLobby();
-  });
-
-  socket.on('start_game', () => {
-    if (socket.id !== state.hostId || state.phase !== 'lobby') return;
-    if (activePlayers().length < 2) {
-      socket.emit('join_error', 'Need at least 2 players to start');
-      return;
-    }
-    startRound();
   });
 
   socket.on('submit_selection', ({ selected }) => {
@@ -210,28 +248,22 @@ io.on('connection', socket => {
       selected: Array.isArray(selected) ? selected : [],
       time: Date.now(),
     };
+    broadcastSubmissions();
   });
 
-  socket.on('next_round', () => {
-    if (socket.id !== state.hostId || state.phase !== 'results') return;
-    startRound();
-  });
-
-  socket.on('play_again', () => {
-    if (socket.id !== state.hostId) return;
-    resetGame();
-    io.emit('game_reset');
-  });
+  // ── disconnect ────────────────────────────────────────────────────────────
 
   socket.on('disconnect', () => {
     console.log('- disconnected:', socket.id);
+
+    if (socket.id === state.hostSocketId) {
+      state.hostSocketId = null;
+      console.log('  host disconnected');
+      return;
+    }
+
     if (!state.players[socket.id]) return;
     delete state.players[socket.id];
-
-    if (state.hostId === socket.id) {
-      const remaining = Object.keys(state.players);
-      state.hostId = remaining.length > 0 ? remaining[0] : null;
-    }
 
     if (state.phase === 'lobby') {
       broadcastLobby();
@@ -244,12 +276,12 @@ io.on('connection', socket => {
 const PORT = 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🎯 SpotIt! server running`);
-  console.log(`   Local:   http://localhost:${PORT}`);
+  console.log(`   Host panel: http://localhost:${PORT}/host`);
   const nets = os.networkInterfaces();
   for (const iface of Object.values(nets)) {
     for (const net of iface) {
       if (net.family === 'IPv4' && !net.internal) {
-        console.log(`   Network: http://${net.address}:${PORT}  ← share this with players`);
+        console.log(`   Players:    http://${net.address}:${PORT}  ← share with players`);
       }
     }
   }

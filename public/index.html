@@ -77,58 +77,46 @@
       text-transform: uppercase; margin-bottom: 14px;
     }
 
-    /* ── phase 1 grid ── */
-    .ref-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 10px; margin: 18px 0;
-      transition: opacity .5s;
-    }
-    .ref-item {
-      font-size: 3.2rem; background: var(--card); border-radius: var(--r);
-      padding: 14px; aspect-ratio: 1;
-      display: flex; align-items: center; justify-content: center;
-    }
-
     /* ── timer bar ── */
     .bar-wrap { height: 8px; background: var(--card); border-radius: 4px; overflow: hidden; margin: 14px 0; }
     .bar-fill { height: 100%; border-radius: 4px; width: 100%; }
 
-    /* ── phase 2 ── */
-    .p2-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 6px;
-    }
-    .p2-counter { font-size: .95rem; color: var(--dim); }
-
-    #carousel-lane {
+    /* ── phase 1 carousel (memorize) ── */
+    #p1-lane {
       width: 100%; height: 180px; position: relative;
       overflow: hidden; background: var(--surface);
-      border-radius: var(--r); margin: 10px 0 8px;
+      border-radius: var(--r); margin: 10px 0;
     }
-    #item-mover { position: absolute; }
-    #moving-card {
+    #p1-mover { position: absolute; }
+    #p1-card {
       width: 140px; height: 140px; border-radius: 20px;
-      background: var(--card); border: 3px solid transparent;
+      background: var(--card);
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      transition: border-color .1s, background .1s;
       user-select: none; -webkit-user-select: none;
     }
-    #moving-card.selected {
-      border-color: var(--accent);
-      background: rgba(78, 204, 163, .15);
+    #p1-emoji { font-size: 5rem; line-height: 1; pointer-events: none; }
+
+    /* ── phase 2 selection grid ── */
+    .selection-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; margin: 4px 0;
     }
-    #card-emoji { font-size: 5rem; line-height: 1; pointer-events: none; }
+    .sel-item {
+      font-size: 3.2rem; background: var(--card); border-radius: var(--r);
+      padding: 14px; aspect-ratio: 1;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; border: 3px solid transparent;
+      transition: border-color .15s, background .15s, transform .08s;
+      user-select: none; -webkit-user-select: none;
+    }
+    .sel-item.selected {
+      border-color: var(--accent);
+      background: rgba(78, 204, 163, .18);
+    }
+    .sel-item:active { transform: scale(.91); }
 
     .sel-count { font-size: .9rem; color: var(--dim); }
     .sel-count span { color: var(--accent); font-weight: 700; }
-
-    @keyframes tapPulse {
-      0%   { transform: scale(1); }
-      40%  { transform: scale(1.2); }
-      100% { transform: scale(1); }
-    }
-    #moving-card.tapped { animation: tapPulse .22s ease-out; }
 
     /* ── results ── */
     .recap {
@@ -190,9 +178,7 @@
   <div class="container">
     <h2>Lobby</h2>
     <div id="player-list" class="player-list"></div>
-    <p id="wait-msg" class="dim-text">Waiting for host to start…</p>
-    <button id="start-btn" style="display:none">▶ Start Game</button>
-    <div id="lobby-error" class="error"></div>
+    <p class="dim-text">Waiting for host to start…</p>
   </div>
 </div>
 
@@ -201,8 +187,14 @@
   <div class="container">
     <div class="badge">Round <span id="round-num">1</span></div>
     <h2 id="p1-title">Memorize!</h2>
-    <p id="p1-hint" class="dim-text" style="margin-bottom:0">Remember these items</p>
-    <div id="ref-grid" class="ref-grid"></div>
+    <p id="p1-hint" class="dim-text">Watch carefully!</p>
+    <div id="p1-lane">
+      <div id="p1-mover">
+        <div id="p1-card">
+          <div id="p1-emoji"></div>
+        </div>
+      </div>
+    </div>
     <div class="bar-wrap"><div id="p1-bar" class="bar-fill" style="background:var(--accent)"></div></div>
   </div>
 </div>
@@ -210,18 +202,14 @@
 <!-- PHASE 2 -->
 <div id="phase2-screen" class="screen">
   <div class="container">
-    <div class="p2-header">
-      <span id="p2-counter" class="p2-counter">1 / 12</span>
+    <h2>Select!</h2>
+    <p class="dim-text" style="margin-bottom:14px">Tap the items you saw</p>
+    <div id="selection-grid" class="selection-grid"></div>
+    <div class="bar-wrap"><div id="p2-bar" class="bar-fill" style="background:var(--primary)"></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
       <span class="sel-count">Selected: <span id="sel-count">0</span></span>
     </div>
-    <p style="font-size:.82rem;color:var(--dim);margin-bottom:2px">Tap it before it disappears!</p>
-    <div id="carousel-lane">
-      <div id="item-mover">
-        <div id="moving-card">
-          <div id="card-emoji"></div>
-        </div>
-      </div>
-    </div>
+    <button id="submit-btn" style="margin-top:12px">Submit</button>
   </div>
 </div>
 
@@ -242,8 +230,7 @@
 
     <div id="elim-banner" style="display:none" class="elim-banner"></div>
 
-    <button id="next-btn" style="display:none;margin-top:6px">Next Round →</button>
-    <p id="res-wait" style="display:none" class="dim-text">Waiting for host…</p>
+    <p class="dim-text" style="margin-top:10px">Waiting for host…</p>
   </div>
 </div>
 
@@ -261,16 +248,18 @@
 <script>
 const socket = io();
 
-let myId   = null;
-let hostId = null;
+let myId = null;
 
-// carousel state
-let cItems    = [];
-let cIndex    = 0;
-let cSelected = new Set();
-let cTimer    = null;
-let cItemDur  = 1500;
-let tapTimer  = null;
+// phase 1 carousel state
+let p1Items   = [];
+let p1Index   = 0;
+let p1Timer   = null;
+let p1ItemDur = 2000;
+
+// phase 2 grid state
+let p2Items     = [];
+let p2Selected  = new Set();
+let p2Submitted = false;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -319,67 +308,117 @@ socket.on('joined', ({ id }) => {
 });
 
 socket.on('join_error', msg => {
-  // could be on join screen or lobby
   document.getElementById('join-error').textContent = msg;
-  document.getElementById('lobby-error').textContent = msg;
 });
 
-socket.on('lobby_update', ({ players, hostId: hid }) => {
-  hostId = hid;
-  const iAmHost = myId === hid;
-
+socket.on('lobby_update', ({ players }) => {
   document.getElementById('player-list').innerHTML = players
-    .map(p => `<div class="player-chip">${p.id === hid ? '👑 ' : ''}${esc(p.name)}</div>`)
+    .map(p => `<div class="player-chip">${esc(p.name)}</div>`)
     .join('');
-
-  document.getElementById('start-btn').style.display = iAmHost ? 'block' : 'none';
-  document.getElementById('wait-msg').style.display  = iAmHost ? 'none'  : 'block';
-  document.getElementById('lobby-error').textContent = '';
 });
 
-socket.on('phase1_start', ({ items, duration, round }) => {
+// ── phase 1: carousel (memorize) ─────────────────────────────────────────────
+
+socket.on('phase1_start', ({ items, itemDuration, round }) => {
   document.getElementById('round-num').textContent = round;
   document.getElementById('p1-title').textContent  = 'Memorize!';
-  document.getElementById('p1-hint').textContent   = 'Remember these items';
+  document.getElementById('p1-hint').textContent   = 'Watch carefully!';
 
-  const grid = document.getElementById('ref-grid');
-  grid.style.opacity = '1';
-  grid.style.transition = '';
-  grid.innerHTML = items.map(i => `<div class="ref-item">${i}</div>`).join('');
+  p1Items   = items;
+  p1Index   = 0;
+  p1ItemDur = itemDuration;
 
-  setBar(document.getElementById('p1-bar'), duration, 'var(--accent)');
-  show('phase1-screen');
-});
-
-socket.on('phase1_hide', () => {
-  const grid = document.getElementById('ref-grid');
-  grid.style.transition = 'opacity .5s';
-  grid.style.opacity = '0';
-  document.getElementById('p1-title').textContent = 'Get Ready!';
-  document.getElementById('p1-hint').textContent  = 'Carousel incoming…';
-  stopBar(document.getElementById('p1-bar'));
-});
-
-socket.on('phase2_start', ({ items, itemDuration }) => {
-  cItems    = items;
-  cIndex    = 0;
-  cSelected = new Set();
-  cItemDur  = itemDuration;
-
-  document.getElementById('sel-count').textContent = '0';
-
-  // park mover off-screen so nothing flashes on entry
-  const mover = document.getElementById('item-mover');
+  const mover = document.getElementById('p1-mover');
   mover.style.transition = 'none';
   mover.style.left = '-200px';
 
-  show('phase2-screen');
-  setTimeout(advanceCarousel, 400);
+  setBar(document.getElementById('p1-bar'), items.length * itemDuration, 'var(--accent)');
+  show('phase1-screen');
+  setTimeout(advanceP1Carousel, 400);
 });
 
-socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => {
-  if (cTimer) { clearTimeout(cTimer); cTimer = null; }
+socket.on('phase1_hide', () => {
+  if (p1Timer) { clearTimeout(p1Timer); p1Timer = null; }
+  document.getElementById('p1-title').textContent = 'Get Ready!';
+  document.getElementById('p1-hint').textContent  = 'Selection incoming…';
+  const mover = document.getElementById('p1-mover');
+  mover.style.transition = 'none';
+  mover.style.left = '-200px';
+  stopBar(document.getElementById('p1-bar'));
+});
 
+function advanceP1Carousel() {
+  if (p1Index >= p1Items.length) return;
+
+  const item  = p1Items[p1Index];
+  const lane  = document.getElementById('p1-lane');
+  const mover = document.getElementById('p1-mover');
+  const card  = document.getElementById('p1-card');
+
+  document.getElementById('p1-emoji').textContent = item;
+
+  const laneW = lane.offsetWidth;
+  const cardW = card.offsetWidth;
+  const cardH = card.offsetHeight;
+
+  mover.style.transition = 'none';
+  mover.style.top  = `${(lane.offsetHeight - cardH) / 2}px`;
+  mover.style.left = `${laneW + 10}px`;
+  mover.offsetHeight;
+
+  mover.style.transition = `left ${p1ItemDur}ms linear`;
+  mover.style.left = `${-cardW - 10}px`;
+
+  p1Timer = setTimeout(() => { p1Index++; advanceP1Carousel(); }, p1ItemDur);
+}
+
+// ── phase 2: selection grid ───────────────────────────────────────────────────
+
+socket.on('phase2_start', ({ items, totalDuration }) => {
+  p2Items     = items;
+  p2Selected  = new Set();
+  p2Submitted = false;
+
+  const grid = document.getElementById('selection-grid');
+  grid.innerHTML = items.map(item =>
+    `<div class="sel-item" data-item="${esc(item)}">${item}</div>`
+  ).join('');
+
+  grid.querySelectorAll('.sel-item').forEach(el => {
+    el.addEventListener('click', () => {
+      if (p2Submitted) return;
+      const item = el.dataset.item;
+      if (p2Selected.has(item)) {
+        p2Selected.delete(item);
+        el.classList.remove('selected');
+      } else {
+        p2Selected.add(item);
+        el.classList.add('selected');
+      }
+      document.getElementById('sel-count').textContent = p2Selected.size;
+    });
+  });
+
+  document.getElementById('sel-count').textContent = '0';
+  document.getElementById('submit-btn').textContent = 'Submit';
+  document.getElementById('submit-btn').disabled = false;
+
+  setBar(document.getElementById('p2-bar'), totalDuration, 'var(--primary)');
+  show('phase2-screen');
+});
+
+document.getElementById('submit-btn').addEventListener('click', () => {
+  if (p2Submitted) return;
+  p2Submitted = true;
+  document.getElementById('submit-btn').textContent = 'Submitted ✓';
+  document.getElementById('submit-btn').disabled = true;
+  stopBar(document.getElementById('p2-bar'));
+  socket.emit('submit_selection', { selected: Array.from(p2Selected) });
+});
+
+// ── results & game over ───────────────────────────────────────────────────────
+
+socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => {
   document.getElementById('res-round').textContent = round;
 
   document.getElementById('res-ref-items').innerHTML =
@@ -395,106 +434,26 @@ socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => 
 
   const banner = document.getElementById('elim-banner');
   if (eliminated) {
-    banner.textContent  = `❌ ${eliminated} has been eliminated!`;
-    banner.className    = 'elim-banner out';
+    banner.textContent   = `❌ ${eliminated} has been eliminated!`;
+    banner.className     = 'elim-banner out';
     banner.style.display = 'block';
   } else {
     banner.style.display = 'none';
   }
 
-  const nextBtn  = document.getElementById('next-btn');
-  const resWait  = document.getElementById('res-wait');
-  const iAmHost  = myId === hostId;
-
   if (winner) {
-    nextBtn.style.display = 'none';
-    resWait.style.display = 'none';
     document.getElementById('winner-name').textContent = winner;
     show('results-screen');
     setTimeout(() => show('gameover-screen'), 3000);
   } else {
-    nextBtn.style.display = iAmHost ? 'block' : 'none';
-    resWait.style.display = iAmHost ? 'none'  : 'block';
     show('results-screen');
   }
 });
 
 socket.on('game_reset', () => {
-  const grid = document.getElementById('ref-grid');
-  grid.style.opacity = '1';
-  grid.style.transition = '';
-  document.getElementById('lobby-error').textContent = '';
+  if (p1Timer) { clearTimeout(p1Timer); p1Timer = null; }
   show('lobby-screen');
 });
-
-// ── lobby ────────────────────────────────────────────────────────────────────
-
-document.getElementById('start-btn').addEventListener('click', () => {
-  socket.emit('start_game');
-});
-
-// ── carousel ─────────────────────────────────────────────────────────────────
-
-function advanceCarousel() {
-  if (cIndex >= cItems.length) { submitCarousel(); return; }
-
-  const item  = cItems[cIndex];
-  const lane  = document.getElementById('carousel-lane');
-  const mover = document.getElementById('item-mover');
-  const card  = document.getElementById('moving-card');
-
-  document.getElementById('card-emoji').textContent = item;
-  card.className = 'moving-card' + (cSelected.has(item) ? ' selected' : '');
-  document.getElementById('p2-counter').textContent = `${cIndex + 1} / ${cItems.length}`;
-
-  const laneW = lane.offsetWidth;
-  const cardW = card.offsetWidth;
-  const cardH = card.offsetHeight;
-
-  // snap to start position (off right edge), then slide left
-  mover.style.transition = 'none';
-  mover.style.top  = `${(lane.offsetHeight - cardH) / 2}px`;
-  mover.style.left = `${laneW + 10}px`;
-  mover.offsetHeight; // force reflow
-
-  mover.style.transition = `left ${cItemDur}ms linear`;
-  mover.style.left = `${-cardW - 10}px`;
-
-  cTimer = setTimeout(() => { cIndex++; advanceCarousel(); }, cItemDur);
-}
-
-function submitCarousel() {
-  const mover = document.getElementById('item-mover');
-  mover.style.transition = 'none';
-  mover.style.left = '-200px';
-  document.getElementById('p2-counter').textContent = 'Done! ✓';
-  socket.emit('submit_selection', { selected: Array.from(cSelected) });
-}
-
-document.getElementById('moving-card').addEventListener('click', () => {
-  if (cIndex >= cItems.length) return;
-  const item = cItems[cIndex];
-  if (cSelected.has(item)) { cSelected.delete(item); } else { cSelected.add(item); }
-
-  const card = document.getElementById('moving-card');
-  card.className = 'moving-card' + (cSelected.has(item) ? ' selected' : '');
-
-  card.classList.remove('tapped');
-  card.offsetHeight;
-  card.classList.add('tapped');
-  if (tapTimer) clearTimeout(tapTimer);
-  tapTimer = setTimeout(() => card.classList.remove('tapped'), 220);
-
-  document.getElementById('sel-count').textContent = cSelected.size;
-});
-
-// ── results ───────────────────────────────────────────────────────────────────
-
-document.getElementById('next-btn').addEventListener('click', () => {
-  socket.emit('next_round');
-});
-
-// ── game over ─────────────────────────────────────────────────────────────────
 
 document.getElementById('play-again-btn').addEventListener('click', () => {
   socket.emit('play_again');
