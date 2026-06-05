@@ -293,6 +293,20 @@ let cTimer    = null;
 let cItemDur  = 1500;
 let tapTimer  = null;
 
+// ── background music ────────────────────────────────────────────────────────
+const bgMusic  = new Audio('/assets/One_Life_Remaining.mp3');
+bgMusic.loop   = true;
+bgMusic.volume = 0.35;
+
+function startMusic() {
+  bgMusic.currentTime = 0;
+  bgMusic.play().catch(() => {});
+}
+function stopMusic() {
+  bgMusic.pause();
+  bgMusic.currentTime = 0;
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function show(id) {
@@ -370,6 +384,7 @@ socket.on('phase1_start', ({ items, duration, round }) => {
 
   setBar(document.getElementById('p1-bar'), duration, 'var(--accent)');
   show('phase1-screen');
+  startMusic();
 });
 
 socket.on('phase1_hide', () => {
@@ -400,6 +415,7 @@ socket.on('phase2_start', ({ items, itemDuration }) => {
 
 socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => {
   if (cTimer) { clearTimeout(cTimer); cTimer = null; }
+  stopMusic();
 
   document.getElementById('res-round').textContent = round;
 
@@ -441,6 +457,7 @@ socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => 
 });
 
 socket.on('game_reset', () => {
+  stopMusic();
   const grid = document.getElementById('ref-grid');
   grid.style.opacity = '1';
   grid.style.transition = '';
