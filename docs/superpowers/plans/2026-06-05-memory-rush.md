@@ -1001,7 +1001,10 @@ Create `memory-rush/client/index.html`:
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f1020" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <title>Memory Rush</title>
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
@@ -1077,6 +1080,12 @@ export class Net {
 
 Create `memory-rush/client/src/styles.css`:
 
+Mobile-first: phones in portrait are the target; the layout is full-bleed with
+safe-area padding and scales up to a centered column on desktop. Touch targets are
+≥44px, the YES/NO choices are split 50/50 and thumb-reachable, inputs use ≥16px font
+(avoids iOS auto-zoom), and `touch-action: manipulation` suppresses double-tap zoom on
+controls.
+
 ```css
 :root {
   color-scheme: dark;
@@ -1087,34 +1096,63 @@ Create `memory-rush/client/src/styles.css`:
   --bad: #ff5d73;
   --text: #eef0ff;
   font-family: system-ui, sans-serif;
+  /* Prevent mobile browsers from auto-inflating text. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); }
-#app { max-width: 760px; margin: 0 auto; padding: 24px; }
-h1 { text-align: center; letter-spacing: 1px; }
-.panel { background: var(--panel); border-radius: 16px; padding: 20px; margin: 12px 0; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  /* Avoid rubber-band scroll bleed during fast-paced play. */
+  overscroll-behavior: none;
+}
+#app {
+  width: 100%;
+  max-width: 560px; /* caps on tablet/desktop; full-bleed on phones */
+  margin: 0 auto;
+  min-height: 100dvh; /* fill the small-viewport height */
+  /* Respect notches / home indicator. */
+  padding: max(16px, env(safe-area-inset-top))
+           max(16px, env(safe-area-inset-right))
+           max(16px, env(safe-area-inset-bottom))
+           max(16px, env(safe-area-inset-left));
+}
+h1 { text-align: center; letter-spacing: 1px; font-size: clamp(24px, 7vw, 34px); }
+.panel { background: var(--panel); border-radius: 16px; padding: 18px; margin: 12px 0; }
 button {
   background: var(--accent); color: white; border: 0; border-radius: 12px;
   padding: 14px 22px; font-size: 18px; cursor: pointer; font-weight: 600;
+  min-height: 48px; /* comfortable touch target */
+  touch-action: manipulation; /* no double-tap zoom */
+  -webkit-tap-highlight-color: transparent;
 }
 button:disabled { opacity: 0.4; cursor: default; }
 input {
   background: #0c0d1c; border: 1px solid #34376a; color: var(--text);
-  border-radius: 10px; padding: 12px 14px; font-size: 18px; width: 100%;
+  border-radius: 10px; padding: 14px; font-size: 18px; width: 100%;
+  min-height: 48px;
 }
 .row { display: flex; gap: 12px; align-items: center; }
+/* Stack the join row on the narrowest screens. */
+@media (max-width: 380px) {
+  .row { flex-direction: column; align-items: stretch; }
+}
 .center { text-align: center; }
-.big { font-size: 64px; margin: 8px 0; }
-.timer { font-size: 40px; font-weight: 700; text-align: center; }
-.scene { position: relative; width: 100%; aspect-ratio: 16 / 10;
+.big { font-size: clamp(56px, 22vw, 88px); margin: 8px 0; line-height: 1; }
+.timer { font-size: clamp(36px, 12vw, 48px); font-weight: 700; text-align: center; }
+.scene { position: relative; width: 100%; aspect-ratio: 4 / 5; /* portrait-friendly */
   background: linear-gradient(#22244a, #15172f); border-radius: 16px; overflow: hidden; }
-.scene .obj { position: absolute; transform: translate(-50%, -50%); font-size: 44px; }
-.choices { display: flex; gap: 16px; justify-content: center; margin-top: 20px; }
-.choices button { min-width: 140px; }
+.scene .obj { position: absolute; transform: translate(-50%, -50%);
+  font-size: clamp(34px, 11vw, 48px); }
+.choices { display: flex; gap: 16px; justify-content: center; margin-top: 24px; }
+.choices button { flex: 1; min-height: 64px; font-size: 22px; } /* big, thumb-reachable */
 .yes { background: var(--good); }
 .no { background: var(--bad); }
-.list { list-style: none; padding: 0; }
-.list li { display: flex; justify-content: space-between; padding: 10px 14px;
+.list { list-style: none; padding: 0; margin: 0; }
+.list li { display: flex; justify-content: space-between; padding: 12px 14px;
   border-radius: 10px; background: #0c0d1c; margin: 6px 0; }
 .host-badge { color: var(--accent); font-size: 14px; }
 .flash-good { outline: 4px solid var(--good); }
@@ -1526,7 +1564,21 @@ Close Tab A (host). In Tab B, the lobby should now show Bob as host with a Start
 
 Expected: Bob becomes host; the game remains playable.
 
-- [ ] **Step 4: Final commit**
+- [ ] **Step 4: Verify the mobile layout**
+
+In the browser, open device emulation (e.g. Chrome DevTools → toggle device toolbar →
+iPhone) at a portrait phone size, or load `http://<your-lan-ip>:5174` on a real phone.
+1. Join screen fits with no horizontal scroll; the nickname input does not trigger zoom
+   on focus (iOS).
+2. During QUIZ, the YES/NO buttons are large, split 50/50, and reachable with a thumb at
+   the bottom of the screen; double-tapping a button does not zoom the page.
+3. The scene fits within the viewport (no page scroll) during MEMORIZE; object positions
+   look consistent.
+4. Content clears notch/home-indicator safe areas (no clipping under a simulated notch).
+
+Expected: clean single-column portrait play with no horizontal scroll or accidental zoom.
+
+- [ ] **Step 5: Final commit**
 
 ```bash
 cd memory-rush && git add -A && git commit -q -m "docs: verified end-to-end multiplayer loop" --allow-empty
@@ -1536,7 +1588,8 @@ cd memory-rush && git add -A && git commit -q -m "docs: verified end-to-end mult
 
 ## Self-Review Notes (addressed)
 
-- **Spec coverage:** single shared room (Task 4 global `state`), host-press-Start (Task 3 `START` guard + Task 7 button), 6s memorize / 8 prompts / 4s each (Task 3 `DEFAULT_CONFIG`), speed+accuracy scoring (Task 3 `ANSWER`), SVG/emoji scenes (Task 2 + Task 6), nickname identity (Task 5/7 join), authoritative server timing (Task 3 injected `ctx`, Task 4 timers), join-mid-round waiting (Task 3 `JOIN`), disconnect/host reassignment (Task 3 `DISCONNECT`/`ensureHost`), Vitest tests (Task 3). All covered.
+- **Spec coverage:** single shared room (Task 4 global `state`), host-press-Start (Task 3 `START` guard + Task 7 button), 6s memorize / 8 prompts / 4s each (Task 3 `DEFAULT_CONFIG`), speed+accuracy scoring (Task 3 `ANSWER`), SVG/emoji scenes (Task 2 + Task 6), nickname identity (Task 5/7 join), authoritative server timing (Task 3 injected `ctx`, Task 4 timers), join-mid-round waiting (Task 3 `JOIN`), disconnect/host reassignment (Task 3 `DISCONNECT`/`ensureHost`), Vitest tests (Task 3), mobile-first UI (Task 5 viewport meta + safe-area/touch-target CSS). All covered.
+- **Mobile coverage:** `viewport-fit=cover` + safe-area insets, full-bleed phone layout capped to a centered column on desktop, ≥48px touch targets, split 50/50 thumb-reachable YES/NO buttons (≥64px), ≥16px inputs (no iOS auto-zoom), `touch-action: manipulation`, `100dvh` sizing, portrait-friendly scene aspect ratio, and `clamp()`-scaled type. Add mobile checks to Task 8 manual verification (test in a phone viewport / device emulation).
 - **Type consistency:** message tag is `t` everywhere; `ServerMessage`/`ClientMessage` shapes match between `protocol.ts`, `game.ts`, `index.ts`, `net.ts`, `app.ts`. `PromptObject`/`SceneObject`/`SceneView` consistent across shared + client. Reducer returns `{ out, wakeAt }` consistently.
 - **Placeholders:** none — all steps contain full code.
 ```

@@ -4,11 +4,11 @@ Date: 2026-06-05
 Status: Approved
 
 ## Summary
-A real-time, multiplayer, browser-based memory challenge game. All players join one
-shared room. Each round, the host starts a match: a hand-drawn SVG scene is shown to
-everyone for a fixed memorize window, then the scene disappears and players answer a
-series of quickfire "was this object present?" prompts. Speed + accuracy are scored,
-and a cumulative leaderboard runs across rounds.
+A real-time, multiplayer, **mobile-first** browser-based memory challenge game. All
+players join one shared room from their phones. Each round, the host starts a match: a
+hand-drawn SVG scene is shown to everyone for a fixed memorize window, then the scene
+disappears and players answer a series of quickfire "was this object present?" prompts.
+Speed + accuracy are scored, and a cumulative leaderboard runs across rounds.
 
 ## Decisions (locked)
 - **Content source:** bundled curated set (no external APIs, fully offline, deterministic).
@@ -18,6 +18,8 @@ and a cumulative leaderboard runs across rounds.
 - **Stack:** Node + `ws` (WebSocket) server + Vite + TypeScript client.
 - **Identity:** player enters a nickname on join; in-memory only, no accounts/persistence.
 - **Round control:** first player is host and presses **Start** for each round.
+- **Target device:** mobile-first. The primary experience is a phone in portrait; the
+  layout is designed for small touch screens first and scales up gracefully to desktop.
 
 ## Architecture
 Single project folder `memory-rush/` with three parts and one root `package.json`:
@@ -99,6 +101,21 @@ Server -> Client:
 
 All deadlines are server timestamps (`endsAt` in ms). Clients render countdowns from
 them; the server remains the source of truth for timing and scoring.
+
+## Mobile UI
+The client is designed phone-first; desktop is a graceful scale-up, not the target.
+- **Viewport:** `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">`.
+- **Layout:** single-column, portrait-oriented. Content max-width caps on larger screens
+  but defaults to full-bleed on phones. Respect safe-area insets (notches/home bar) via
+  `env(safe-area-inset-*)`.
+- **Touch targets:** all interactive elements ≥ 44px tall. The QUIZ YES/NO buttons are
+  large, full-width (or split 50/50), thumb-reachable near the bottom of the screen.
+- **No accidental zoom/scroll:** inputs use ≥16px font (avoids iOS auto-zoom); disable
+  double-tap zoom on game controls; the active game screen fits without page scrolling.
+- **Scene rendering:** the SVG scene scales to viewport width with a fixed aspect ratio
+  so object positions stay consistent across devices.
+- **Feedback:** countdowns and correct/wrong flashes are large and high-contrast for
+  glanceable play on a small screen.
 
 ## Edge cases
 - **Join mid-round:** player lands in lobby list marked "waiting"; becomes scorable from
