@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SpotIt!</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0d0d1a;
+      --surface: #1a1a2e;
+      --card:    #16213e;
+      --primary: #e94560;
+      --accent:  #4ecca3;
+      --yellow:  #f5c518;
+      --text:    #eaeaea;
+      --dim:     #888;
+      --r:       16px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── screens ── */
+    .screen { display: none; width: 100%; min-height: 100dvh; padding: 24px 20px; }
+    .screen.active { display: flex; align-items: center; justify-content: center; }
+    .container { width: 100%; max-width: 460px; text-align: center; }
+
+    h1 { font-size: 2.6rem; }
+    h2 { font-size: 1.8rem; margin-bottom: 12px; }
+    .subtitle { color: var(--dim); margin-bottom: 28px; font-size: 1rem; }
+
+    /* ── inputs & buttons ── */
+    input[type="text"] {
+      width: 100%; padding: 14px 16px; font-size: 1.15rem;
+      border: 2px solid var(--card); border-radius: var(--r);
+      background: var(--card); color: var(--text); outline: none;
+      margin-bottom: 12px; transition: border-color .2s;
+    }
+    input[type="text"]:focus { border-color: var(--primary); }
+
+    button {
+      width: 100%; padding: 15px; font-size: 1.1rem; font-weight: 700;
+      border: none; border-radius: var(--r); cursor: pointer;
+      background: var(--primary); color: #fff;
+      transition: opacity .2s, transform .1s;
+    }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent; border: 2px solid var(--accent); color: var(--accent);
+    }
+
+    .error { color: var(--primary); font-size: .9rem; margin-top: 8px; min-height: 20px; }
+
+    /* ── lobby ── */
+    .player-list { display: flex; flex-direction: column; gap: 8px; margin: 20px 0; }
+    .player-chip {
+      background: var(--card); padding: 12px 16px; border-radius: var(--r);
+      font-size: 1.05rem; text-align: left;
+    }
+    .dim-text { color: var(--dim); font-size: .95rem; margin: 10px 0; }
+
+    /* ── round badge ── */
+    .badge {
+      display: inline-block; background: var(--primary);
+      padding: 4px 14px; border-radius: 20px;
+      font-size: .8rem; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; margin-bottom: 14px;
+    }
+
+    /* ── phase 1 grid ── */
+    .ref-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; margin: 18px 0;
+      transition: opacity .5s;
+    }
+    .ref-item {
+      font-size: 3.2rem; background: var(--card); border-radius: var(--r);
+      padding: 14px; aspect-ratio: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── timer bar ── */
+    .bar-wrap { height: 8px; background: var(--card); border-radius: 4px; overflow: hidden; margin: 14px 0; }
+    .bar-fill { height: 100%; border-radius: 4px; width: 100%; }
+
+    /* ── phase 2 ── */
+    .p2-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 6px;
+    }
+    .p2-counter { font-size: .95rem; color: var(--dim); }
+
+    #carousel-lane {
+      width: 100%; height: 180px; position: relative;
+      overflow: hidden; background: var(--surface);
+      border-radius: var(--r); margin: 10px 0 8px;
+    }
+    #item-mover { position: absolute; }
+    #moving-card {
+      width: 140px; height: 140px; border-radius: 20px;
+      background: var(--card); border: 3px solid transparent;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: border-color .1s, background .1s;
+      user-select: none; -webkit-user-select: none;
+    }
+    #moving-card.selected {
+      border-color: var(--accent);
+      background: rgba(78, 204, 163, .15);
+    }
+    #card-emoji { font-size: 5rem; line-height: 1; pointer-events: none; }
+
+    .sel-count { font-size: .9rem; color: var(--dim); }
+    .sel-count span { color: var(--accent); font-weight: 700; }
+
+    @keyframes tapPulse {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    #moving-card.tapped { animation: tapPulse .22s ease-out; }
+
+    /* ── results ── */
+    .recap {
+      background: var(--card); border-radius: var(--r);
+      padding: 14px 16px; margin: 14px 0; text-align: left;
+    }
+    .recap-label { color: var(--dim); font-size: .85rem; margin-bottom: 10px; }
+    .recap-items { display: flex; gap: 8px; flex-wrap: wrap; }
+    .recap-item  { font-size: 2rem; }
+
+    .scores-header {
+      display: grid; grid-template-columns: 1fr 56px 52px 52px;
+      gap: 6px; padding: 0 16px;
+      color: var(--dim); font-size: .72rem; text-transform: uppercase;
+      letter-spacing: .5px; margin-bottom: 4px; text-align: right;
+    }
+    .scores-header span:first-child { text-align: left; }
+
+    .scores-list { display: flex; flex-direction: column; gap: 6px; }
+    .score-row {
+      background: var(--card); border-radius: var(--r); padding: 11px 16px;
+      display: grid; grid-template-columns: 1fr 56px 52px 52px;
+      align-items: center; gap: 6px; text-align: right;
+    }
+    .score-row.out { opacity: .45; }
+    .score-name { text-align: left; font-weight: 600; font-size: .95rem; }
+    .score-acc  { color: var(--dim); font-size: .9rem; }
+    .score-pts  { color: var(--accent); font-weight: 700; }
+    .score-tot  { color: var(--yellow); font-weight: 700; }
+
+    .elim-banner {
+      border-radius: var(--r); padding: 12px 16px;
+      font-size: 1.1rem; font-weight: 700; margin: 14px 0;
+    }
+    .elim-banner.out    { background: rgba(233,69,96,.18); color: var(--primary); }
+    .elim-banner.victor { background: rgba(78,204,163,.18); color: var(--accent); }
+
+    /* ── game over ── */
+    .trophy { font-size: 5rem; margin-bottom: 12px; }
+    #winner-name { font-size: 2.2rem; color: var(--accent); margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+
+<!-- JOIN -->
+<div id="join-screen" class="screen active">
+  <div class="container">
+    <div style="font-size:3rem;margin-bottom:6px">🎯</div>
+    <h1>SpotIt!</h1>
+    <p class="subtitle">Memory · Speed · Survival</p>
+    <input type="text" id="name-input" placeholder="Your name" maxlength="20" autocomplete="off" spellcheck="false">
+    <button id="join-btn">Join Game</button>
+    <div id="join-error" class="error"></div>
+  </div>
+</div>
+
+<!-- LOBBY -->
+<div id="lobby-screen" class="screen">
+  <div class="container">
+    <h2>Lobby</h2>
+    <div id="player-list" class="player-list"></div>
+    <p id="wait-msg" class="dim-text">Waiting for host to start…</p>
+    <button id="start-btn" style="display:none">▶ Start Game</button>
+    <div id="lobby-error" class="error"></div>
+  </div>
+</div>
+
+<!-- PHASE 1 -->
+<div id="phase1-screen" class="screen">
+  <div class="container">
+    <div class="badge">Round <span id="round-num">1</span></div>
+    <h2 id="p1-title">Memorize!</h2>
+    <p id="p1-hint" class="dim-text" style="margin-bottom:0">Remember these items</p>
+    <div id="ref-grid" class="ref-grid"></div>
+    <div class="bar-wrap"><div id="p1-bar" class="bar-fill" style="background:var(--accent)"></div></div>
+  </div>
+</div>
+
+<!-- PHASE 2 -->
+<div id="phase2-screen" class="screen">
+  <div class="container">
+    <div class="p2-header">
+      <span id="p2-counter" class="p2-counter">1 / 12</span>
+      <span class="sel-count">Selected: <span id="sel-count">0</span></span>
+    </div>
+    <p style="font-size:.82rem;color:var(--dim);margin-bottom:2px">Tap it before it disappears!</p>
+    <div id="carousel-lane">
+      <div id="item-mover">
+        <div id="moving-card">
+          <div id="card-emoji"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="results-screen" class="screen">
+  <div class="container">
+    <h2>Round <span id="res-round">1</span></h2>
+
+    <div class="recap">
+      <div class="recap-label">The items were:</div>
+      <div id="res-ref-items" class="recap-items"></div>
+    </div>
+
+    <div class="scores-header">
+      <span>Player</span><span>Acc.</span><span>+Pts</span><span>Total</span>
+    </div>
+    <div id="scores-list" class="scores-list"></div>
+
+    <div id="elim-banner" style="display:none" class="elim-banner"></div>
+
+    <button id="next-btn" style="display:none;margin-top:6px">Next Round →</button>
+    <p id="res-wait" style="display:none" class="dim-text">Waiting for host…</p>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameover-screen" class="screen">
+  <div class="container">
+    <div class="trophy">🏆</div>
+    <h1 id="winner-name"></h1>
+    <p class="subtitle">wins the game!</p>
+    <button id="play-again-btn" class="btn-ghost" style="margin-top:24px">Play Again</button>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+
+let myId   = null;
+let hostId = null;
+
+// carousel state
+let cItems    = [];
+let cIndex    = 0;
+let cSelected = new Set();
+let cTimer    = null;
+let cItemDur  = 1500;
+let tapTimer  = null;
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function setBar(el, ms, color) {
+  if (color) el.style.background = color;
+  el.style.transition = 'none';
+  el.style.width = '100%';
+  el.offsetHeight;
+  el.style.transition = `width ${ms}ms linear`;
+  el.style.width = '0%';
+}
+
+function stopBar(el) {
+  el.style.transition = 'none';
+  el.style.width = '0%';
+}
+
+// ── join screen ───────────────────────────────────────────────────────────────
+
+function tryJoin() {
+  const name = document.getElementById('name-input').value.trim();
+  if (!name) { document.getElementById('join-error').textContent = 'Enter a name first'; return; }
+  socket.emit('join', { name });
+}
+
+document.getElementById('join-btn').addEventListener('click', tryJoin);
+document.getElementById('name-input').addEventListener('keydown', e => { if (e.key === 'Enter') tryJoin(); });
+
+// ── socket events ─────────────────────────────────────────────────────────────
+
+socket.on('joined', ({ id }) => {
+  myId = id;
+  document.getElementById('join-error').textContent = '';
+  show('lobby-screen');
+});
+
+socket.on('join_error', msg => {
+  // could be on join screen or lobby
+  document.getElementById('join-error').textContent = msg;
+  document.getElementById('lobby-error').textContent = msg;
+});
+
+socket.on('lobby_update', ({ players, hostId: hid }) => {
+  hostId = hid;
+  const iAmHost = myId === hid;
+
+  document.getElementById('player-list').innerHTML = players
+    .map(p => `<div class="player-chip">${p.id === hid ? '👑 ' : ''}${esc(p.name)}</div>`)
+    .join('');
+
+  document.getElementById('start-btn').style.display = iAmHost ? 'block' : 'none';
+  document.getElementById('wait-msg').style.display  = iAmHost ? 'none'  : 'block';
+  document.getElementById('lobby-error').textContent = '';
+});
+
+socket.on('phase1_start', ({ items, duration, round }) => {
+  document.getElementById('round-num').textContent = round;
+  document.getElementById('p1-title').textContent  = 'Memorize!';
+  document.getElementById('p1-hint').textContent   = 'Remember these items';
+
+  const grid = document.getElementById('ref-grid');
+  grid.style.opacity = '1';
+  grid.style.transition = '';
+  grid.innerHTML = items.map(i => `<div class="ref-item">${i}</div>`).join('');
+
+  setBar(document.getElementById('p1-bar'), duration, 'var(--accent)');
+  show('phase1-screen');
+});
+
+socket.on('phase1_hide', () => {
+  const grid = document.getElementById('ref-grid');
+  grid.style.transition = 'opacity .5s';
+  grid.style.opacity = '0';
+  document.getElementById('p1-title').textContent = 'Get Ready!';
+  document.getElementById('p1-hint').textContent  = 'Carousel incoming…';
+  stopBar(document.getElementById('p1-bar'));
+});
+
+socket.on('phase2_start', ({ items, itemDuration }) => {
+  cItems    = items;
+  cIndex    = 0;
+  cSelected = new Set();
+  cItemDur  = itemDuration;
+
+  document.getElementById('sel-count').textContent = '0';
+
+  // park mover off-screen so nothing flashes on entry
+  const mover = document.getElementById('item-mover');
+  mover.style.transition = 'none';
+  mover.style.left = '-200px';
+
+  show('phase2-screen');
+  setTimeout(advanceCarousel, 400);
+});
+
+socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => {
+  if (cTimer) { clearTimeout(cTimer); cTimer = null; }
+
+  document.getElementById('res-round').textContent = round;
+
+  document.getElementById('res-ref-items').innerHTML =
+    refItems.map(i => `<span class="recap-item">${i}</span>`).join('');
+
+  document.getElementById('scores-list').innerHTML = scores.map(s => `
+    <div class="score-row${s.eliminated ? ' out' : ''}">
+      <span class="score-name">${esc(s.name)}${s.eliminated ? ' ❌' : ''}</span>
+      <span class="score-acc">${s.accuracy}%</span>
+      <span class="score-pts">+${s.roundScore}</span>
+      <span class="score-tot">${s.totalScore}</span>
+    </div>`).join('');
+
+  const banner = document.getElementById('elim-banner');
+  if (eliminated) {
+    banner.textContent  = `❌ ${eliminated} has been eliminated!`;
+    banner.className    = 'elim-banner out';
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+
+  const nextBtn  = document.getElementById('next-btn');
+  const resWait  = document.getElementById('res-wait');
+  const iAmHost  = myId === hostId;
+
+  if (winner) {
+    nextBtn.style.display = 'none';
+    resWait.style.display = 'none';
+    document.getElementById('winner-name').textContent = winner;
+    show('results-screen');
+    setTimeout(() => show('gameover-screen'), 3000);
+  } else {
+    nextBtn.style.display = iAmHost ? 'block' : 'none';
+    resWait.style.display = iAmHost ? 'none'  : 'block';
+    show('results-screen');
+  }
+});
+
+socket.on('game_reset', () => {
+  const grid = document.getElementById('ref-grid');
+  grid.style.opacity = '1';
+  grid.style.transition = '';
+  document.getElementById('lobby-error').textContent = '';
+  show('lobby-screen');
+});
+
+// ── lobby ────────────────────────────────────────────────────────────────────
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  socket.emit('start_game');
+});
+
+// ── carousel ─────────────────────────────────────────────────────────────────
+
+function advanceCarousel() {
+  if (cIndex >= cItems.length) { submitCarousel(); return; }
+
+  const item  = cItems[cIndex];
+  const lane  = document.getElementById('carousel-lane');
+  const mover = document.getElementById('item-mover');
+  const card  = document.getElementById('moving-card');
+
+  document.getElementById('card-emoji').textContent = item;
+  card.className = 'moving-card' + (cSelected.has(item) ? ' selected' : '');
+  document.getElementById('p2-counter').textContent = `${cIndex + 1} / ${cItems.length}`;
+
+  const laneW = lane.offsetWidth;
+  const cardW = card.offsetWidth;
+  const cardH = card.offsetHeight;
+
+  // snap to start position (off right edge), then slide left
+  mover.style.transition = 'none';
+  mover.style.top  = `${(lane.offsetHeight - cardH) / 2}px`;
+  mover.style.left = `${laneW + 10}px`;
+  mover.offsetHeight; // force reflow
+
+  mover.style.transition = `left ${cItemDur}ms linear`;
+  mover.style.left = `${-cardW - 10}px`;
+
+  cTimer = setTimeout(() => { cIndex++; advanceCarousel(); }, cItemDur);
+}
+
+function submitCarousel() {
+  const mover = document.getElementById('item-mover');
+  mover.style.transition = 'none';
+  mover.style.left = '-200px';
+  document.getElementById('p2-counter').textContent = 'Done! ✓';
+  socket.emit('submit_selection', { selected: Array.from(cSelected) });
+}
+
+document.getElementById('moving-card').addEventListener('click', () => {
+  if (cIndex >= cItems.length) return;
+  const item = cItems[cIndex];
+  if (cSelected.has(item)) { cSelected.delete(item); } else { cSelected.add(item); }
+
+  const card = document.getElementById('moving-card');
+  card.className = 'moving-card' + (cSelected.has(item) ? ' selected' : '');
+
+  card.classList.remove('tapped');
+  card.offsetHeight;
+  card.classList.add('tapped');
+  if (tapTimer) clearTimeout(tapTimer);
+  tapTimer = setTimeout(() => card.classList.remove('tapped'), 220);
+
+  document.getElementById('sel-count').textContent = cSelected.size;
+});
+
+// ── results ───────────────────────────────────────────────────────────────────
+
+document.getElementById('next-btn').addEventListener('click', () => {
+  socket.emit('next_round');
+});
+
+// ── game over ─────────────────────────────────────────────────────────────────
+
+document.getElementById('play-again-btn').addEventListener('click', () => {
+  socket.emit('play_again');
+});
+</script>
+</body>
+</html>
