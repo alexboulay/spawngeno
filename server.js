@@ -38,7 +38,6 @@ const DISTRACTOR_COUNT = 6;
 const PHASE1_ITEM_DURATION = 2000;
 const PHASE2_DURATION = 15000;
 const POINTS_CORRECT = 10;
-const POINTS_PENALTY = 8;
 const POINTS_SPEED   = 30;
 
 const state = {
@@ -95,12 +94,13 @@ function startRound() {
     state.answers[p.id] = { selected: [], time: null };
   });
 
-  const phase1Duration = state.refItems.length * PHASE1_ITEM_DURATION;
+  const itemDuration = Math.max(500, Math.round(PHASE1_ITEM_DURATION * Math.pow(0.95, state.round - 1)));
+  const phase1Duration = state.refItems.length * itemDuration;
 
   state.phase = 'phase1';
   io.emit('phase1_start', {
     items: state.refItems,
-    itemDuration: PHASE1_ITEM_DURATION,
+    itemDuration,
     round: state.round,
   });
 
@@ -137,12 +137,15 @@ function endRound() {
     const falsePositives = [...sel].filter(item => !refSet.has(item)).length;
     const accuracy       = truePositives / state.refItems.length;
     const elapsed        = ans.time ? ans.time - state.phase2StartTime : duration;
+    const distractorCount = state.carouselItems.length - state.refItems.length;
+    const penaltyPerFP   = POINTS_CORRECT * (state.refItems.length / distractorCount);
     const speedBonus     = Math.max(0, 1 - elapsed / duration) * POINTS_SPEED;
     const score          = Math.max(0, Math.round(
-      truePositives * POINTS_CORRECT - falsePositives * POINTS_PENALTY + speedBonus
+      truePositives * POINTS_CORRECT - falsePositives * penaltyPerFP + speedBonus
     ));
 
-    return { player: p, accuracy, score, elapsed };
+    const foundItems = state.refItems.filter(item => sel.has(item));
+    return { player: p, accuracy, score, elapsed, foundItems };
   });
 
   scores.sort((a, b) => a.score - b.score || b.elapsed - a.elapsed);
@@ -168,6 +171,7 @@ function endRound() {
       roundScore: s.score,
       totalScore: state.players[s.player.id].totalScore,
       eliminated: state.players[s.player.id].eliminated,
+      foundItems: s.foundItems,
     })),
     eliminated,
     winner,
@@ -293,7 +297,7 @@ io.on('connection', socket => {
 
 const PORT = 3000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🎯 SpotIt! server running`);
+  console.log(`\n🎯 Spawngeno server running`);
   console.log(`   Host panel: http://localhost:${PORT}/host`);
   const nets = os.networkInterfaces();
   for (const iface of Object.values(nets)) {

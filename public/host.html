@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SpotIt! — Host</title>
+  <title>Spawngeno — Host</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -102,11 +102,14 @@
 
     /* ── ref items preview ── */
     .ref-items-grid {
-      display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0;
+      display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0;
     }
     .ref-item {
-      font-size: 2.2rem; background: var(--card); border-radius: 10px; padding: 10px;
+      flex-shrink: 0;
+      width: 60px; height: 60px;
+      background: #fff; border-radius: 12px; padding: 8px;
     }
+    .ref-item img { display: block; width: 44px; height: 44px; object-fit: contain; }
 
     /* ── submission bar ── */
     .sub-bar-wrap { height: 10px; background: var(--card); border-radius: 5px; overflow: hidden; margin: 10px 0; }
@@ -155,7 +158,7 @@
 
 <div class="header">
   <div style="font-size:1.8rem">🎯</div>
-  <h1>SpotIt!</h1>
+  <h1>Spawngeno</h1>
   <span class="host-badge">Host</span>
   <span id="round-badge" class="round-badge" style="display:none">Round <span id="round-num">1</span></span>
 </div>
@@ -188,7 +191,7 @@
     <div id="panel-phase1" class="status-card" style="display:none">
       <span class="phase-label p1">Phase 1 — Memorize</span>
       <h2>Players are memorizing…</h2>
-      <p class="status-sub">These items will be shown to all players for 5 seconds.</p>
+      <p class="status-sub">Items scroll past players one by one — they must memorize them.</p>
       <div id="phase1-ref-items" class="ref-items-grid"></div>
       <div class="bar-wrap"><div id="p1-bar" class="bar-fill" style="background:var(--accent)"></div></div>
     </div>
@@ -197,7 +200,7 @@
     <div id="panel-phase2" class="status-card" style="display:none">
       <span class="phase-label p2">Phase 2 — Choose</span>
       <h2>Players are choosing…</h2>
-      <p class="status-sub">Items slide across — players tap the ones they remember.</p>
+      <p class="status-sub">Players tap the items they remember from the grid.</p>
       <div class="sub-bar-wrap"><div id="sub-bar" class="sub-bar-fill"></div></div>
       <div class="sub-label"><span id="sub-count">0</span> / <span id="sub-total">0</span> submitted</div>
     </div>
@@ -296,7 +299,7 @@ socket.on('phase1_start', ({ items, itemDuration, round }) => {
   document.getElementById('round-num').textContent = round;
   document.getElementById('round-badge').style.display = '';
   document.getElementById('phase1-ref-items').innerHTML =
-    items.map(i => `<div class="ref-item">${i}</div>`).join('');
+    items.map(i => `<div class="ref-item"><img src="/assets/${i}" alt="item"></div>`).join('');
   setBar(document.getElementById('p1-bar'), items.length * itemDuration, 'var(--accent)');
   showPanel('phase1');
 });
@@ -325,7 +328,7 @@ socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => 
   document.getElementById('res-round').textContent = round;
 
   document.getElementById('res-ref-items').innerHTML =
-    refItems.map(i => `<div class="ref-item">${i}</div>`).join('');
+    refItems.map(i => `<div class="ref-item"><img src="/assets/${i}" alt="item"></div>`).join('');
 
   document.getElementById('scores-list').innerHTML = scores.map(s => `
     <div class="score-row${s.eliminated ? ' out' : ''}">

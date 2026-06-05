@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>SpotIt!</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spawngeno</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -19,23 +19,34 @@
       --r:       16px;
     }
 
+    html, body { height: 100%; }
+
     body {
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      min-height: 100dvh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
     }
 
-    /* ── screens ── */
-    .screen { display: none; width: 100%; min-height: 100dvh; padding: 24px 20px; }
-    .screen.active { display: flex; align-items: center; justify-content: center; }
-    .container { width: 100%; max-width: 460px; text-align: center; }
+    /* ── screens ──────────────────────────────────────────────── */
+    .screen { display: none; }
+    .screen.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100dvh;
+      padding: 32px 20px;
+      overflow-y: auto;
+    }
+    /* vertically center when content fits; top-align when it overflows */
+    .container {
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+      margin: auto 0;
+    }
 
-    h1 { font-size: 2.6rem; }
-    h2 { font-size: 1.8rem; margin-bottom: 12px; }
+    h1 { font-size: clamp(2rem, 6vw, 2.8rem); }
+    h2 { font-size: clamp(1.5rem, 4vw, 1.9rem); margin-bottom: 10px; }
     .subtitle { color: var(--dim); margin-bottom: 28px; font-size: 1rem; }
 
     /* ── inputs & buttons ── */
@@ -78,56 +89,60 @@
     }
 
     /* ── timer bar ── */
-    .bar-wrap { height: 8px; background: var(--card); border-radius: 4px; overflow: hidden; margin: 14px 0; }
+    .bar-wrap {
+      height: 8px; background: var(--card);
+      border-radius: 4px; overflow: hidden; margin: 14px 0;
+    }
     .bar-fill { height: 100%; border-radius: 4px; width: 100%; }
 
-    /* ── phase 1 carousel (memorize) ── */
+    /* ── phase 1 carousel ── */
     #p1-lane {
-      width: 100%; height: 180px; position: relative;
-      overflow: hidden; background: var(--surface);
-      border-radius: var(--r); margin: 10px 0;
+      width: 100%; height: clamp(180px, 40vw, 240px);
+      position: relative; overflow: hidden;
+      background: var(--surface); border-radius: var(--r); margin: 10px 0;
     }
     #p1-mover { position: absolute; }
     #p1-card {
-      width: 140px; height: 140px; border-radius: 20px;
-      background: var(--card);
-      display: flex; align-items: center; justify-content: center;
+      width: clamp(140px, 32vw, 180px);
+      height: clamp(140px, 32vw, 180px);
+      border-radius: 20px;
+      background: #fff;
+      overflow: hidden;
       user-select: none; -webkit-user-select: none;
     }
     #p1-emoji {
-      width: 90px; height: 90px; pointer-events: none;
+      width: 100%; height: 100%;
+      padding: 18%;
       display: flex; align-items: center; justify-content: center;
     }
-    #p1-emoji img {
-      width: 100%; height: 100%; object-fit: contain;
-      filter: drop-shadow(0 1px 3px rgba(0,0,0,.4));
-    }
+    #p1-emoji img { display: block; width: 100%; height: auto; }
 
     /* ── phase 2 selection grid ── */
     .selection-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 10px; margin: 4px 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(8px, 2vw, 14px);
+      margin: 4px 0;
     }
     .sel-item {
-      background: var(--card); border-radius: var(--r);
-      padding: 14px; aspect-ratio: 1;
+      background: #fff;
+      border-radius: var(--r);
+      aspect-ratio: 1;
+      padding: 12%;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer; border: 3px solid transparent;
       transition: border-color .15s, background .15s, transform .08s;
       user-select: none; -webkit-user-select: none;
-      box-shadow: 0 2px 8px rgba(0,0,0,.3);
+      box-shadow: 0 2px 10px rgba(0,0,0,.35);
     }
     .sel-item.selected {
       border-color: var(--accent);
-      background: rgba(78, 204, 163, .18);
+      background: rgba(78, 204, 163, .12);
     }
     .sel-item:active { transform: scale(.91); }
-    .sel-item img {
-      width: 100%; height: 100%; object-fit: contain;
-      filter: drop-shadow(0 1px 3px rgba(0,0,0,.4));
-    }
+    .sel-item img { display: block; width: 100%; height: auto; }
 
-    .sel-count { font-size: .9rem; color: var(--dim); }
+    .sel-count { font-size: .9rem; color: var(--dim); margin-top: 6px; }
     .sel-count span { color: var(--accent); font-weight: 700; }
 
     /* ── results ── */
@@ -137,13 +152,12 @@
     }
     .recap-label { color: var(--dim); font-size: .85rem; margin-bottom: 10px; }
     .recap-items { display: flex; gap: 8px; flex-wrap: wrap; }
-    .recap-item  {
-      width: 44px; height: 44px; background: var(--surface);
-      border-radius: 10px; padding: 6px;
+    .recap-item {
+      width: 44px; height: 44px;
+      background: #fff; border-radius: 8px; padding: 6px;
       display: inline-flex; align-items: center; justify-content: center;
-      box-shadow: 0 1px 4px rgba(0,0,0,.25);
     }
-    .recap-item img { width: 100%; height: 100%; object-fit: contain; }
+    .recap-item img { display: block; width: 100%; height: auto; }
 
     .scores-header {
       display: grid; grid-template-columns: 1fr 56px 52px 52px;
@@ -158,12 +172,15 @@
       background: var(--card); border-radius: var(--r); padding: 11px 16px;
       display: grid; grid-template-columns: 1fr 56px 52px 52px;
       align-items: center; gap: 6px; text-align: right;
+      row-gap: 0;
     }
     .score-row.out { opacity: .45; }
     .score-name { text-align: left; font-weight: 600; font-size: .95rem; }
     .score-acc  { color: var(--dim); font-size: .9rem; }
     .score-pts  { color: var(--accent); font-weight: 700; }
     .score-tot  { color: var(--yellow); font-weight: 700; }
+    .score-found { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .score-found img { width: 32px; height: 32px; object-fit: contain; background: rgba(255,255,255,.07); border-radius: 6px; padding: 3px; }
 
     .elim-banner {
       border-radius: var(--r); padding: 12px 16px;
@@ -173,8 +190,14 @@
     .elim-banner.victor { background: rgba(78,204,163,.18); color: var(--accent); }
 
     /* ── game over ── */
-    .trophy { width: 100px; height: 100px; margin: 0 auto 12px; }
-    #winner-name { font-size: 2.2rem; color: var(--accent); margin-bottom: 6px; }
+    .trophy {
+      width: clamp(80px, 20vw, 120px);
+      height: clamp(80px, 20vw, 120px);
+      margin: 0 auto 16px;
+      background: #fff; border-radius: 50%; padding: 14px;
+    }
+    .trophy img { display: block; width: 100%; height: auto; }
+    #winner-name { font-size: clamp(1.8rem, 5vw, 2.4rem); color: var(--accent); margin-bottom: 6px; }
   </style>
 </head>
 <body>
@@ -182,8 +205,10 @@
 <!-- JOIN -->
 <div id="join-screen" class="screen active">
   <div class="container">
-    <div style="width:80px;height:80px;margin:0 auto 6px"><img src="/assets/observation-eye-svgrepo-com.svg" style="width:100%;height:100%" alt="logo"></div>
-    <h1>SpotIt!</h1>
+    <div style="width:clamp(60px,16vw,90px);height:clamp(60px,16vw,90px);margin:0 auto 12px;background:#fff;border-radius:50%;padding:12px">
+      <img src="/assets/observation-eye-svgrepo-com.svg" style="display:block;width:100%;height:auto" alt="logo">
+    </div>
+    <h1>Spawngeno</h1>
     <p class="subtitle">Memory · Speed · Survival</p>
     <input type="text" id="name-input" placeholder="Your name" maxlength="20" autocomplete="off" spellcheck="false">
     <button id="join-btn">Join Game</button>
@@ -224,9 +249,7 @@
     <p class="dim-text" style="margin-bottom:14px">Tap the items you saw</p>
     <div id="selection-grid" class="selection-grid"></div>
     <div class="bar-wrap"><div id="p2-bar" class="bar-fill" style="background:var(--primary)"></div></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-      <span class="sel-count">Selected: <span id="sel-count">0</span></span>
-    </div>
+    <div class="sel-count">Selected: <span id="sel-count">0</span></div>
     <button id="submit-btn" style="margin-top:12px">Submit</button>
   </div>
 </div>
@@ -255,7 +278,9 @@
 <!-- GAME OVER -->
 <div id="gameover-screen" class="screen">
   <div class="container">
-    <div class="trophy"><img src="/assets/stars-star-svgrepo-com-2.svg" style="width:100%;height:100%" alt="winner"></div>
+    <div class="trophy">
+      <img src="/assets/stars-star-svgrepo-com-2.svg" alt="winner">
+    </div>
     <h1 id="winner-name"></h1>
     <p class="subtitle">wins the game!</p>
     <button id="play-again-btn" class="btn-ghost" style="margin-top:24px">Play Again</button>
@@ -284,20 +309,15 @@ const bgMusic  = new Audio('/assets/One_Life_Remaining.mp3');
 bgMusic.loop   = true;
 bgMusic.volume = 0.35;
 
-function startMusic() {
-  bgMusic.currentTime = 0;
-  bgMusic.play().catch(() => {});
-}
-function stopMusic() {
-  bgMusic.pause();
-  bgMusic.currentTime = 0;
-}
+function startMusic() { bgMusic.currentTime = 0; bgMusic.play().catch(() => {}); }
+function stopMusic()  { bgMusic.pause(); bgMusic.currentTime = 0; }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
 }
 
 function esc(str) {
@@ -331,10 +351,19 @@ function tryJoin() {
 document.getElementById('join-btn').addEventListener('click', tryJoin);
 document.getElementById('name-input').addEventListener('keydown', e => { if (e.key === 'Enter') tryJoin(); });
 
+socket.on('connect', () => {
+  const saved = localStorage.getItem('playerName');
+  if (saved) {
+    document.getElementById('name-input').value = saved;
+    socket.emit('join', { name: saved });
+  }
+});
+
 // ── socket events ─────────────────────────────────────────────────────────────
 
 socket.on('joined', ({ id }) => {
   myId = id;
+  localStorage.setItem('playerName', document.getElementById('name-input').value.trim());
   document.getElementById('join-error').textContent = '';
   show('lobby-screen');
 });
@@ -465,6 +494,7 @@ socket.on('round_results', ({ round, refItems, scores, eliminated, winner }) => 
       <span class="score-acc">${s.accuracy}%</span>
       <span class="score-pts">+${s.roundScore}</span>
       <span class="score-tot">${s.totalScore}</span>
+      <div class="score-found">${(s.foundItems || []).map(i => `<img src="/assets/${i}" alt="">`).join('')}</div>
     </div>`).join('');
 
   const banner = document.getElementById('elim-banner');
